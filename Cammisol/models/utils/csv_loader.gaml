@@ -44,7 +44,7 @@ global
 		}
 	}
 	
-	action load_csv_data {
+	action load_csv_data() {
 		write "Loading fertilizers CSV data...";
 		csv_file fertilizer_csv <- csv_file("../includes/qualite_amendements_organiques.csv", false); // Do not handle header
 		do load_csv_into_map(fertilizer_csv, fertilizers_data);
@@ -58,10 +58,10 @@ global
 }
 
 experiment debug_csv_loader type:gui {
-	action _init_ {
+	action _init_() {
 		create simulation {
 			ask world {
-				do load_csv_data;
+				do load_csv_data();
 			}
 		}
 	}

@@ -28,7 +28,7 @@ global {
 	EnzymaticActivityProblem enzymatic_activity_problem;
 	SimulatedAnnealing simulated_annealing;
 	
-	action init_enzymatic_optimisation {
+	action init_enzymatic_optimisation() {
 		create MaxLabileC with: (weight: 1.0) {
 			max_labile_C <- self;
 		}
@@ -199,7 +199,7 @@ species MicrobePopulation schedules:[]
 	/**
 	 * Updates active C and requested C/N/P for the current time step.
 	 */
-	action update {
+	action update() {
 		active_C <- C * active_rate;
 		requested_C <- active_C * local_step / (carbon_use_efficiency * dividing_time);
 		requested_N <- carbon_use_efficiency * requested_C / C_N;
@@ -208,38 +208,7 @@ species MicrobePopulation schedules:[]
 		requested_C_P <- C_P / carbon_use_efficiency;
 	}
 	
-	/**
-	 * Assimilates nutrients from the specified dam to the cytosol.
-	 */
-	action assimilate(Dam dam, float perceived_rate) {
-		write "Requested C/N/P: " + requested_C + ", " + requested_N + ", " + requested_P;
-		// C/N/P is retrieved in priority from the cytosol. Is enough nutrients
-		// is available in the cytosol, nothing is consumed from the perceived
-		// C/N/P.
-		float assimilated_C <- min(dam.dom[2] * perceived_rate, max(0.0, requested_C-cytosol_C));
-		float assimilated_N <- dam.dom[0] > 0 ? assimilated_C * dam.dom[2] / dam.dom[0] : 0.0;
-		float assimilated_P <- dam.dom[1] > 0 ? assimilated_C * dam.dom[2] / dam.dom[1] : 0.0;
-
-		cytosol_C <- cytosol_C + assimilated_C;
-		cytosol_N <- cytosol_N + assimilated_N;
-		cytosol_P <- cytosol_P + assimilated_P;
-
-		dam.dom[0] <- dam.dom[0] - assimilated_N;
-		dam.dom[1] <- dam.dom[1] - assimilated_P;
-		dam.dom[2] <- dam.dom[2] - assimilated_C;
-
-		assimilated_N <- min(dam.dim[0] * perceived_rate, max(0.0, requested_N-cytosol_N));
-		assimilated_P <- min(dam.dim[1] * perceived_rate, max(0.0, requested_P-cytosol_P));
-
-		cytosol_N <- cytosol_N + assimilated_N;
-		cytosol_P <- cytosol_P + assimilated_P;
-
-		dam.dim[0] <- dam.dim[0] - assimilated_N;
-		dam.dim[1] <- dam.dim[1] - assimilated_P;
-		
-		
-		write "Cytosol C/N/P: " + cytosol_C + ", " + cytosol_N + ", " + cytosol_P;
-	}
+	
 	
 	/**
 	 * Updates active rate according to perceived nutrients.
@@ -268,10 +237,45 @@ species MicrobePopulation schedules:[]
 		active_rate <- min(1.0, max(minimum_active_rate, active_rate + d_active_population * local_step));
 	}
 	
+	
+	/**
+	 * Assimilates nutrients from the specified dam to the cytosol.
+	 */
+	action assimilate(Dam dam, float perceived_rate) {
+		//write "Requested C/N/P: " + requested_C + ", " + requested_N + ", " + requested_P;
+		// C/N/P is retrieved in priority from the cytosol. Is enough nutrients
+		// is available in the cytosol, nothing is consumed from the perceived
+		// C/N/P.
+		float assimilated_C <- min(dam.dom[2] * perceived_rate, max(0.0, requested_C-cytosol_C));
+		float assimilated_N <- dam.dom[0] > 0 ? assimilated_C * dam.dom[2] / dam.dom[0] : 0.0;
+		float assimilated_P <- dam.dom[1] > 0 ? assimilated_C * dam.dom[2] / dam.dom[1] : 0.0;
+
+		cytosol_C <- cytosol_C + assimilated_C;
+		cytosol_N <- cytosol_N + assimilated_N;
+		cytosol_P <- cytosol_P + assimilated_P;
+
+		dam.dom[0] <- dam.dom[0] - assimilated_N;
+		dam.dom[1] <- dam.dom[1] - assimilated_P;
+		dam.dom[2] <- dam.dom[2] - assimilated_C;
+
+		assimilated_N <- min(dam.dim[0] * perceived_rate, max(0.0, requested_N-cytosol_N));
+		assimilated_P <- min(dam.dim[1] * perceived_rate, max(0.0, requested_P-cytosol_P));
+
+		cytosol_N <- cytosol_N + assimilated_N;
+		cytosol_P <- cytosol_P + assimilated_P;
+
+		dam.dim[0] <- dam.dim[0] - assimilated_N;
+		dam.dim[1] <- dam.dim[1] - assimilated_P;
+		
+		
+		//write "Cytosol C/N/P: " + cytosol_C + ", " + cytosol_N + ", " + cytosol_P;
+	}
+	
+	
 	/**
 	 * Reject CO2 from cytosol C, according to the CUE of the population.
 	 */
-	action respirate
+	action respirate()
 	{
 		float C_respiration <- (1-carbon_use_efficiency) * cytosol_C;
 		cytosol_C <- cytosol_C - C_respiration; 

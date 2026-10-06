@@ -72,7 +72,7 @@ experiment MicrobesTestBase {
 		M_Strategist::[0.0, 0.0, 0.0, 0.0]
 	];
 	
-	action update_enzyme_unit {
+	action update_enzyme_unit() {
 		if enzymes_display = "Budget" {
 			enzyme_unit <- "gS/gM/h";
 		} else if enzymes_display = "Absolute" {
@@ -80,11 +80,11 @@ experiment MicrobesTestBase {
 		}
 	}
 	
-	action change_species {
+	action change_species() {
 		microbe_species <- init_species();
 	}
 	
-	action init_species {
+	action init_species() {
 		list<species<MicrobePopulation>> _microbe_species;
 		init_C <- [];
 		if enable_O_Strategist {
@@ -121,10 +121,10 @@ experiment MicrobesTestBase {
 	
 	init {
 		ask simulation {
-			do init_enzymatic_optimisation;
-			do init_enzymes;
+			do init_enzymatic_optimisation();
+			do init_enzymes();
 		}
-		loop s over: microbe_species {
+		loop s over: microbe_species { // ????
 			create s with: [C::init_C[s], C_N::C_N, C_P::C_P] {
 				write N/#gram;
 				write P/#gram;
@@ -133,7 +133,7 @@ experiment MicrobesTestBase {
 		}
 	}
 	
-	action update_output_data {
+	action update_output_data() {
 		loop s over:microbe_species {
 			C[s] <- populations[s].C;
 			C_cytosol[s] <- populations[s].cytosol_C;
@@ -161,7 +161,7 @@ experiment MicrobesTestBase {
 		}
 	}
 	
-	action update_dams {
+	action update_dams() {
 		float prev_C <- sum(Dam collect each.dom[2]);
 		float prev_N <- sum(Dam collect each.dom[0]);
 		float prev_P <- sum(Dam collect each.dom[1]);
@@ -174,7 +174,7 @@ experiment MicrobesTestBase {
 		total_P_dom <- total_P_dom + (current_P - prev_P);
 	}
 	
-	action feed_dams virtual:true;
+	action feed_dams() virtual:true;
 	
 	output {
 		display "C" {
@@ -331,7 +331,7 @@ experiment IndividualMicrobesGrowth parent:MicrobesTestBase {
 		}
 	}
 	
-	action feed_dams {
+	action feed_dams() {
 		loop s over:microbe_species {
 			Dam dam <- dams[s];
 			MicrobePopulation population <- populations[s];
@@ -340,7 +340,7 @@ experiment IndividualMicrobesGrowth parent:MicrobesTestBase {
 	}
 	
 	
-	action update_populations {
+	action update_populations() {
 		ask populations.values {
 			do update;
 		}
@@ -442,17 +442,17 @@ experiment CollectiveMicrobesGrowth parent:MicrobesTestBase {
 		}
 	}
 	
-	action update_populations {
+	action update_populations() {
 		ask populations.values {
 			do update;
 		}
 	}
 	
-	action feed_dams {
+	action feed_dams() {
 		do feed_dam;
 	}
 	
-	action feed_dam virtual:true;
+	action feed_dam() virtual:true;
 }
 
 experiment CollectiveMicrobesGrowth_InfiniteNutrients parent:CollectiveMicrobesGrowth {
@@ -470,7 +470,7 @@ experiment CollectiveMicrobesGrowth_InfiniteNutrients parent:CollectiveMicrobesG
 		do update_output_data;
 	}
 	
-	action feed_dam {
+	action feed_dam() {
 		ask Dam {
 			// The dam is fed with the nutrients requested by all populations
 			dom[2] <- myself.nutrient_rate * sum(myself.microbe_species collect myself.populations[each].requested_C);
@@ -501,7 +501,7 @@ experiment CollectiveMicrobesGrowth_FixedNutrients parent:CollectiveMicrobesGrow
 		do update_output_data;
 	}
 	
-	action feed_dam {
+	action feed_dam() {
 		ask Dam {
 			// The dam is fed with the nutrients requested by all populations
 			dom[2] <- dom[2] + myself.C_dom;
@@ -753,7 +753,7 @@ experiment CollectiveMicrobesMetabolism parent:CollectiveMicrobesGrowth {
 	float C_recal_output <- 0.0;
 	float N_recal_output <- 0.0;
 	float P_recal_output <- 0.0;
-	action feed_dam {
+	action feed_dam() {
 		// Nothing to do
 	}
 	

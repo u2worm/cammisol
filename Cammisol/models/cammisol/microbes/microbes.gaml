@@ -75,8 +75,9 @@ global {
 	/**
 	 * This method must be called from the main global method to allow the usage of Y-A-S_Strategists.
 	 */
-	action init_enzymes {
-		create Enzymes with: [
+	action init_enzymes() {
+		
+ 		create Enzymes with: [
 			name::"Min enzymes (O)",
 			T_CNP::min_T_CNP_O,
 			T_N::min_T_N_O,

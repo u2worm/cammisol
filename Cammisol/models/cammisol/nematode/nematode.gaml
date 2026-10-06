@@ -39,7 +39,7 @@ species Nematode schedules:[]
 	
 	//un nematode mange entre 10K et 100k bacteries par jour -> moins de 10k il dort (ref article de colman)
 	
-	action life
+	action life()
 	{
 		float requested_C <- nematode_predation_rate * local_step;
 		float perceived_C <- perceive();
@@ -47,21 +47,24 @@ species Nematode schedules:[]
 		
 		if(awake)
 		{
-			do move;
+			do move();
 			do predation(perceived_C, requested_C);
-			do respirate;	
-			do anabolize;
+			do respirate();	
+			do anabolize();
 		}
 	}
 	
-	float perceive
+	float perceive()
 	{
 		return sum(current_pore.populations collect(each.C + each.cytosol_C));
 	}
 	
-	action move
+	action move()
 	{
 		list<PoreParticle> neighbors_pores <- current_pore.pore_neighbors;
+		
+		write "pore courant" + current_pore + ": x: " + current_pore.grid_x + ", y: " + current_pore.grid_y + ", z:" + current_pore.grid_z;
+		write "pores voisins : " + length(neighbors_pores) + " ; " + neighbors_pores;
 		
 		float max_perceive <- sum(current_pore.populations collect (each.C + each.cytosol_C));
 		PoreParticle most_attractive <- current_pore;
@@ -74,17 +77,19 @@ species Nematode schedules:[]
 			}
 		}
 		current_pore <- most_attractive;
-		location <- any_location_in(current_pore);
+		location <- any_location_in(current_pore); //TODO a changer
+		
+		write "nouveau pore" + current_pore + "; x: " + current_pore.grid_x + ", y: " + current_pore.grid_y + ", z:" + current_pore.grid_z;
 	}
 	
-	action respirate
+	action respirate()
 	{
 		float C_respiration <- (1-nematode_CUE) * stomack_C;
 		stomack_C <- stomack_C  - C_respiration;
 		nematode_CO2_emissions <- nematode_CO2_emissions + C_respiration;
 	}
 	
-	action anabolize
+	action anabolize()
 	{
 		float C_assimilated <- min(stomack_C, stomack_N * nematode_C_N, stomack_P * nematode_C_P);
 		stomack_C <- stomack_C  - C_assimilated; 
@@ -170,9 +175,9 @@ species Nematode schedules:[]
  	
  	aspect red_dot {
  		if(awake) {
- 			draw circle(0.00005) at: location color: #red;
+ 			draw cube(0.005) at: location color: #red;
  		} else {
- 			draw circle(0.00005) at: location color: #brown;
+ 			draw cube(0.005) at: location color: #brown;
  		}
  	}
 }

@@ -258,7 +258,7 @@ species DecompositionProblem schedules: [] {
 	 * 
 	 * It is expressed as a quantity of recalcitrant C.
 	 */
-	float recal_substrate {
+	float recal_substrate() {
 		return C_recal_init;
 	}
 	
@@ -267,7 +267,7 @@ species DecompositionProblem schedules: [] {
 	 * 
 	 * It is expressed as a quantity of labile C.
 	 */
-	float CNP_extraction_substrate {
+	float CNP_extraction_substrate() {
 		return C_labile_init;
 	}
 	
@@ -277,7 +277,7 @@ species DecompositionProblem schedules: [] {
 	 * It is expressed as a quantity of labile C included in polypeptides and
 	 * chitin (amino acids and N-acetyl glucosamine based molecules).
 	 */
-	float N_extraction_substrate {
+	float N_extraction_substrate() {
 		return min(C_labile_init, N_labile_init * extracted_CN);
 	}
 	
@@ -286,7 +286,7 @@ species DecompositionProblem schedules: [] {
 	 * 
 	 * It is expressed as a quantity of labile C bound to phosphatase.
 	 */
-	float P_extraction_substrate {
+	float P_extraction_substrate() {
 		return min(C_labile_init, P_labile_init * phosphatase_CP);
 	}
 	
@@ -683,16 +683,16 @@ species EnzymaticActivityProblem schedules: [] {
 	 */
 	float X_P_dam_max;
 	
-	action update_X_C_labile_max {
+	action update_X_C_labile_max() {
 		create WeightedEnzymes with: [
 			T_recal::C_microbes * max_enzymes.T_recal
 		] {
 			myself.X_C_labile_max <- myself.decomposition_problem.d_C_recal(self);
-			do die;
+			do die();
 		}
 	}
 	
-	action update_X_C_dam_max {
+	action update_X_C_dam_max() {
 		WeightedEnzymes enzymes;
 		create WeightedEnzymes with: [
 			T_CNP::C_microbes*max_enzymes.T_CNP,
@@ -714,11 +714,11 @@ species EnzymaticActivityProblem schedules: [] {
 			);
 		}
 		ask enzymes {
-			do die;
+			do die();
 		}
 	}
 	
-	action update_X_N_dam_max {
+	action update_X_N_dam_max() {
 		WeightedEnzymes enzymes;
 		create WeightedEnzymes with: [
 			T_CNP::C_microbes*max_enzymes.T_CNP,
@@ -733,11 +733,11 @@ species EnzymaticActivityProblem schedules: [] {
 				) : 0.0;
 		}
 		ask enzymes {
-			do die;
+			do die();
 		}
 	}
 		
-	action update_X_P_dam_max {
+	action update_X_P_dam_max() {
 		WeightedEnzymes enzymes;
 		create WeightedEnzymes with: [
 			T_CNP::C_microbes*max_enzymes.T_CNP,
@@ -754,7 +754,7 @@ species EnzymaticActivityProblem schedules: [] {
 			);
 		}
 		ask enzymes {
-			do die;
+			do die();
 		}
 	}
 }
@@ -835,22 +835,22 @@ species SimulatedAnnealing schedules: [] {
 		e <- E(s);
 	}
 	
-	action step {
+	action step() {
 		SimulatedAnnealingState s_new <- neighbour();
 		float e_new <- E(s_new);
 		if e_new < e or rnd(1.0) < exp(-(e_new - e) / T) {
 			ask s {
 				// Clears current state
 				ask enzymes {
-					do die;
+					do die();
 				}
 				ask weighted_enzymes {
-					do die;
+					do die();
 				}
 				ask decomposition {
-					do die;
+					do die();
 				}
-				do die;
+				do die();
 			}
 			// Update current state
 			s <- s_new;
@@ -859,15 +859,15 @@ species SimulatedAnnealing schedules: [] {
 			ask s_new {
 				// Discards new state
 				ask enzymes {
-					do die;
+					do die();
 				}
 				ask weighted_enzymes {
-					do die;
+					do die();
 				}
 				ask decomposition {
-					do die;
+					do die();
 				}
-				do die;
+				do die();
 			}
 		}
 		T <- 0.99 * T;
@@ -876,23 +876,23 @@ species SimulatedAnnealing schedules: [] {
 	action optimize(EnzymaticActivityProblem problem) {
 		do init_state(problem);
 		ask problem {
-			do update_X_C_labile_max;
-			do update_X_C_dam_max;
-			do update_X_N_dam_max;
-			do update_X_P_dam_max;
+			do update_X_C_labile_max();
+			do update_X_C_dam_max();
+			do update_X_N_dam_max();
+			do update_X_P_dam_max();
 		}
 		
 		int i <- 0;
 		loop while: i < N and e > epsilon {
 			i <- i+1;
-			do step;
+			do step();
 		}
 	}
 	
 	/**
 	 * Generates a random neighbour of the current state.
 	 */
-	SimulatedAnnealingState neighbour {
+	SimulatedAnnealingState neighbour() {
 		SimulatedAnnealingState result;
 		
 		list<float> _T;
@@ -1295,29 +1295,29 @@ experiment EnzymaticActivityWorkbench type: gui {
 		ask SimulatedAnnealing {
 			ask s.problem {
 				ask decomposition_problem {
-					do die;
+					do die();
 				}
 				ask min_enzymes {
-					do die;
+					do die();
 				}
 				ask max_enzymes {
-					do die;
+					do die();
 				}
-				do die;
+				do die();
 			}
 			ask s {
 				ask enzymes {
-					do die;
+					do die();
 				}
 				ask weighted_enzymes {
-					do die;
+					do die();
 				}
 				ask decomposition {
-					do die;
+					do die();
 				}
-				do die;
+				do die();
 			}
-			do die;
+			do die();
 		}
 		
 		Enzymes min_enzymes;
@@ -1451,7 +1451,7 @@ experiment EnzymaticActivityWorkbench type: gui {
 	
 	reflex when: cycle=steps {
 		ask simulation {
-			do pause;
+			do pause();
 		}
 	}
 	

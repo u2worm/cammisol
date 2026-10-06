@@ -38,7 +38,7 @@ global {
 		button_boxes <- button_boxes sort_by (each.layer);
 	}
 	
-	Button select_button_under_mouse {
+	Button select_button_under_mouse() {
 		Button button_under_mouse <- nil;
 		
 		int i <- length(button_boxes)-1;
@@ -70,7 +70,7 @@ global {
 	 * cursor when the mouse enters or leaves the button area, only if there is
 	 * currently no selected item.
 	 */
-	action mouse_move_buttons {
+	action mouse_move_buttons() {
 		// Mouse enter is not triggered if an item is currently selected
 		if (selected_item = nil) {
 			Button button_under_mouse <- select_button_under_mouse();
@@ -79,7 +79,7 @@ global {
 			// currently in focus or the button currently in focus is not the same as the previous one.
 			if current_button_focus != nil and (button_under_mouse = nil or button_under_mouse != current_button_focus) {
 				ask current_button_focus {
-					do mouse_leave;
+					do mouse_leave();
 				}
 				current_button_focus <- nil;
 			}	
@@ -90,7 +90,7 @@ global {
 				current_button_focus <- button_under_mouse;
 				ask current_button_focus {
 					if enabled {
-						do mouse_enter;
+						do mouse_enter();
 					}
 				}
 			}
@@ -101,7 +101,7 @@ global {
 		}
 	}
 	
-	action mouse_drag_buttons {
+	action mouse_drag_buttons() {
 		if(selected_item != nil) {
 			selected_item.location <- #user_location;
 		}
@@ -110,12 +110,12 @@ global {
 	/**
 	 * Action triggered when a button is clicked and no item is currently selected.
 	 */
-	action mouse_down_buttons {
+	action mouse_down_buttons() {
 		Button button_under_mouse <- select_button_under_mouse();
 		if button_under_mouse != nil and current_button_focus = nil {
 			current_button_focus <- button_under_mouse;
 			ask current_button_focus {
-				do mouse_enter;
+				do mouse_enter();
 			}
 		}
 		if current_button_focus != nil and selected_item = nil {
@@ -131,21 +131,21 @@ global {
 	}
 	
 		
-	action mouse_up_buttons {
+	action mouse_up_buttons() {
 		Button button_under_mouse <- select_button_under_mouse();
 		if(button_under_mouse = last_clicked_button) {
 			// Do nothing
 		} else if (last_clicked_button != nil) {
 			// In any other situation, if the last_clicked_button is not nil.
 			ask last_clicked_button {
-				do post_click;
+				do post_click();
 			}
 			last_clicked_button <- nil;
 			selected_item <- nil;
 		}
 		if(current_button_focus!=nil) {
 			ask current_button_focus {
-				do mouse_leave;
+				do mouse_leave();
 			}
 		}
 		current_button_focus <- nil;
@@ -170,11 +170,11 @@ species Button {
 	/**
 	 * Action called when the mouse enters the button.
 	 */
-	action mouse_enter virtual: true;
+	action mouse_enter() virtual: true;
 	/**
 	 * Action called when the mouse leaves the button.
 	 */
-	action mouse_leave virtual: true;
+	action mouse_leave() virtual: true;
 	/**
 	 * Action called when the button is clicked.
 	 * The action is called on the mouse_down event.
@@ -184,7 +184,7 @@ species Button {
 	 * 
 	 * If no item selection is needed, the action can safely return nil.
 	 */
-	action click virtual: true type: agent;
+	action click() virtual: true;
 	/**
 	 * Action called on the next click after the button was previously clicked.
 	 * The action is called even if the second click does not occur on the button.
@@ -194,13 +194,13 @@ species Button {
 	 * safely used on the mouse_down event of the second click and die in the post_click
 	 * action.
 	 */
-	action post_click virtual: true;
+	action post_click() virtual: true;
 	
-	action disable {
+	action disable() {
 		enabled <- false;
 	}
 	
-	action enable {
+	action enable() {
 		enabled <- true;
 	}
 }

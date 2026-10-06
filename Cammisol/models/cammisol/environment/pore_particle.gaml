@@ -37,7 +37,11 @@ global {
 species PoreParticle schedules:[] {
 	int grid_x;
 	int grid_y;
+	int grid_z;
+	float size;
 	float carrying_capacity;
+	
+	
 	
 	/**
 	 * OrganicParticle embedded within the PoreParticle. This is where nematodes spit out some C/N/P.
@@ -52,7 +56,7 @@ species PoreParticle schedules:[] {
 	list<OrganicParticle> accessible_organics;
 
 
-	action decompose {
+	action decompose() {
 		float total_C_labile <- sum(accessible_organics collect each.C_labile);
 		float total_C_recal <- sum(accessible_organics collect each.C_recalcitrant);
 		
@@ -107,9 +111,9 @@ species PoreParticle schedules:[] {
 		}
 	}
 	
-	action microbe_life {
+	action microbe_life() {
 		ask populations {
-			do update;
+			do update();
 		}
 		
 		float total_microbes_C <- sum(populations collect each.C);

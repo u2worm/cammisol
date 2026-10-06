@@ -6,6 +6,9 @@
 */
 
 model cammisol_grid
+// ce modele de grille 2D n'est plus d'actualité 
+/* 
+
 
 import "pore_particle.gaml"
 import "mineral_particle.gaml"
@@ -19,7 +22,7 @@ global {
 	float mineral_rate <- 1/3;
 	float pore_rate <- 1 - organic_rate - mineral_rate;
 
-	int grid_size <- 30;
+	int grid_size <- 20;
 	
 	float soil_size <- 1#cm;
 	
@@ -28,82 +31,76 @@ global {
 	float cell_size <- soil_size/grid_size;
 	float cell_area <- cell_size^2;
 	
-	/**
-	 * Solid matter weight by volume of dry soil.
-	 */
+
+	 // Solid matter weight by volume of dry soil.
 	 // Razanamalala et al. 2023, supplementary data - https://doi.org/10.3390/microbiolres14040117 
 	float bulk_density <- 1.17#gram/(#cm*#cm*#cm);
 	
-	/**
-	 * The total weight of matter in the model.
-	 */
+
+	 // The total weight of matter in the model.
+	 
 	float soil_weight <- bulk_density * world.shape.area * 1#cm;
 	
 		
 	// Default C/N/P concentration in pom for black soils in Razanamalala et al. 2023, supplementary data
 	// https://doi.org/10.3390/microbiolres14040117
 	
-	/**
-	 * Initial C from Fresh Organic Matter concentration in soil,
-	 * expressed as a weight of C by volume of soil. 
-	 * This does not include C in DOM.
-	 */
+	
+	 // Initial C from Fresh Organic Matter concentration in soil,
+	 // expressed as a weight of C by volume of soil. 
+	 // This does not include C in DOM.
+	 
 	float C_concentration_in_pom <- 0.02246#gram/(#cm*#cm*#cm);
 	
-	/**
-	 * Initial N from Fresh Organic Matter concentration in soil.
-	 * This does not include N in DAM.
-	 */
+	
+	 // Initial N from Fresh Organic Matter concentration in soil. ,  This does not include N in DAM.
+	 
+
 	float N_concentration_in_pom <- 0.00137#gram/(#cm*#cm*#cm);
 	
-	/**
-	 * Initial P from Fresh Organic Matter concentration in soil.
-	 * This does not include P in DAM.
-	 */
+	
+	 // Initial P from Fresh Organic Matter concentration in soil. , This does not include P in DAM.
+
 	float P_concentration_in_pom <- 0.00070#gram/(#cm*#cm*#cm);
 	
 	
-	// TODO: Default C/N/P concentrations in dam are currently arbitrary.
-	
-	/**
-	 * Initial C from Dissolved Organic Matter concentration in the soil,
-	 * expressed as a weight of C by weight of soil.
-	 */
-	float C_concentration_in_dom <- (729.0 * 10^-6) #gram/#gram;
-	
-	/**
-	 * Initial N from Dissolved Organic Matter concentration in the soil,
-	 * expressed as a weight of N by weight of soil.
-	 */
-	float N_concentration_in_dom <- (60.0 * 10^-6) #gram/#gram;
-	
-	/**
-	 * Initial P from Dissolved Organic Matter concentration in the soil,
-	 * expressed as a weight of P by weight of soil.
-	 */
-	float P_concentration_in_dom <- (400.0 * 10^-6) #gram/#gram;
-	
-	// Default C/N/P concentration in dim for black soils in Razanamalala et al. 2023, supplementary data
-	// https://doi.org/10.3390/microbiolres14040117
-	
-	/**
-	 * Initial N from Dissolved Inorganic Matter in the soil, expressed as a weight of N by weight of soil.
-	 */
-	float N_concentration_in_dim <- (10.1 * 10^-6) #gram/#gram;
-	/**
-	 * Initial P from Dissolved Inorganic Matter in the soil, expressed as a weight of N by weight of soil.
-	 */
-	float P_concentration_in_dim <- (1.19 * 10^-6) #gram/#gram;
 
 	
-	/**
-	 * Rate of fresh organic matter considered as labile organic matter.
-	 */
+
+	 // Initial C from Dissolved Organic Matter concentration in the soil, expressed as a weight of C by weight of soil.
+
+	float C_concentration_in_dom <- (729.0 * 10^-6) #gram/#gram;
+
+	 // Initial N from Dissolved Organic Matter concentration in the soil, expressed as a weight of N by weight of soil.
+
+	float N_concentration_in_dom <- (60.0 * 10^-6) #gram/#gram;
+	
+
+	 // Initial P from Dissolved Organic Matter concentration in the soil, expressed as a weight of P by weight of soil.
+
+	float P_concentration_in_dom <- (400.0 * 10^-6) #gram/#gram;
+	
+	// Default C/N/P concentration in dim for black soils in Razanamalala et al. 2023, supplementary data https://doi.org/10.3390/microbiolres14040117
+	// 
+	
+
+	 // Initial N from Dissolved Inorganic Matter in the soil, expressed as a weight of N by weight of soil.
+
+	float N_concentration_in_dim <- (10.1 * 10^-6) #gram/#gram;
+
+	 // Initial P from Dissolved Inorganic Matter in the soil, expressed as a weight of N by weight of soil.
+	 
+	float P_concentration_in_dim <- (10.1 * 10^-6) #gram/#gram;
+
+	
+	
+	// Rate of fresh organic matter considered as labile organic matter.
+
 	// Arbitrary
 	float labile_rate_pom <- 0.2;
 	
 	
-	action init_grid {
+	action init_grid() {
 		ask Particle {
 			type <- rnd_choice([ORGANIC::organic_rate, MINERAL::mineral_rate, PORE::pore_rate]);
 			do init_particle;
@@ -119,7 +116,7 @@ global {
 		float P_in_each_dim <- soil_weight * P_concentration_in_dim / pores_count;
 		
 		ask PoreParticle {
-			/* Init grid structure */
+			// Init grid structure
 			add self to: pore_neighbors;
 			ask Particle[grid_x, grid_y] {
 				loop neighbor_cell over: neighbors {
@@ -132,13 +129,13 @@ global {
 			add self.organic_particle to: accessible_organics;
 			ask Particle[grid_x, grid_y] {
 				loop neighbor_cell over: neighbors {
-					if(neighbor_cell.type = ORGANIC) { // TODO: and not from neighbor pores?
+					if(neighbor_cell.type = ORGANIC) {
 						add OrganicParticle(neighbor_cell.particle) to: myself.accessible_organics;
 					}
 				}
 			}
 			
-			/* Init DAM */
+			// Init DAM //
 			ask dam {
 				dom <- [N_in_each_dom, P_in_each_dom, C_in_each_dom];
 				dim <- [N_in_each_dim, P_in_each_dim];
@@ -187,7 +184,7 @@ grid Particle width: grid_size height: grid_size neighbors: 4 {
 	string type;
 	agent particle;
 	
-	action init_particle {
+	action init_particle() {
 		switch type {
 			match MINERAL 
 			{
@@ -326,3 +323,4 @@ experiment cammisol_environment {
 		}
 	}
 }
+*/

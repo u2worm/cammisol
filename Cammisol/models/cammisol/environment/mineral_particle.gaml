@@ -15,6 +15,10 @@ global {
 species MineralParticle schedules: [] {
 	int grid_x;
 	int grid_y;
+	int grid_z;
+	
+	float size;
+	
 	float N;
 	float P;
-}
+} //TODO MAOM

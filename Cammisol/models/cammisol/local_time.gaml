@@ -8,7 +8,7 @@
 
 model local_time
 
-/* Insert your model definition here */
+
 
 global {
 	int local_cycle <- 0;
