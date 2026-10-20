@@ -1,0 +1,44 @@
+
+
+
+{
+  "size": 3,
+  "canvases": {
+
+    "C1": [
+      [
+        ["pore", "pore", "mineral"],
+        ["organic", "pore", "organic"],
+        ["mineral", "organic", "pore"]
+      ],
+      [
+        ["organic", "mineral", "pore"],
+        ["pore", "organic", "pore"],
+        ["mineral", "pore", "organic"]
+      ],
+      [
+        ["pore", "organic", "mineral"],
+        ["mineral", "pore", "pore"],
+        ["organic", "mineral", "organic"]
+      ]
+    ],
+
+    "C0": [
+      [
+        ["C1", "C1", "mineral"],
+        ["pore", "C1", "organic"],
+        ["C1", "pore", "C1"]
+      ],
+      [
+        ["C1", "mineral", "C1"],
+        ["organic", "C1", "pore"],
+        ["C1", "C1", "mineral"]
+      ],
+      [
+        ["mineral", "C1", "C1"],
+        ["C1", "organic", "C1"],
+        ["pore", "C1", "organic"]
+      ]
+    ]
+  }
+}

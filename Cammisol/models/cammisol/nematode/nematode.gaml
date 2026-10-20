@@ -31,6 +31,9 @@ species Nematode schedules:[]
 	float stomack_N;
 	float stomack_P;
 	
+	float requested_C;
+	float perceived_C;
+	
 	PoreParticle current_pore;
 	
 	bool awake <- true;
@@ -39,23 +42,17 @@ species Nematode schedules:[]
 	
 	//un nematode mange entre 10K et 100k bacteries par jour -> moins de 10k il dort (ref article de colman)
 	
-	action life()
-	{
-		float requested_C <- nematode_predation_rate * local_step;
-		float perceived_C <- perceive();
-		awake <- (perceived_C / requested_C) >= nematode_sleep_threshold;
-		
-		if(awake)
-		{
-			do move();
-			do predation(perceived_C, requested_C);
-			do respirate();	
-			do anabolize();
-		}
+	action life() {
+	    requested_C <- nematode_predation_rate * local_step;
+	    
+	    do move();
+	    perceived_C <- perceive(); // apres avoir bougé
+	    
+	    awake <- requested_C > 0 and (perceived_C / requested_C) >= nematode_sleep_threshold;
+	    if awake { do predation(); do respirate(); do anabolize(); }
 	}
 	
-	float perceive()
-	{
+	float perceive(){
 		return sum(current_pore.populations collect(each.C + each.cytosol_C));
 	}
 	
@@ -63,24 +60,94 @@ species Nematode schedules:[]
 	{
 		list<PoreParticle> neighbors_pores <- current_pore.pore_neighbors;
 		
-		write "pore courant" + current_pore + ": x: " + current_pore.grid_x + ", y: " + current_pore.grid_y + ", z:" + current_pore.grid_z;
-		write "pores voisins : " + length(neighbors_pores) + " ; " + neighbors_pores;
+		//write "pore courant" + current_pore + ": x: " + current_pore.grid_x + ", y: " + current_pore.grid_y + ", z:" + current_pore.grid_z;
 		
-		float max_perceive <- sum(current_pore.populations collect (each.C + each.cytosol_C));
+		//write "pores voisins : " + length(neighbors_pores) + " \n ";
+		//loop n over: neighbors_pores{
+		//	write "  voisin " + n + " : x: " + n.grid_x + ", y: " + n.grid_y + ", z: " + n.grid_z;
+		//}
+		
+		float max_perceive <- perceived_C;
 		PoreParticle most_attractive <- current_pore;
 		ask neighbors_pores
 		{
-			float perceived_C <- sum(self.populations collect(each.C + each.cytosol_C));
-			if(perceived_C > max_perceive) {
-				max_perceive <- perceived_C;
+			float current_perceived_C <- sum(populations collect (each.C + each.cytosol_C));
+			if(current_perceived_C > max_perceive) {
+				max_perceive <- current_perceived_C;
 				most_attractive <- self;
 			}
 		}
 		current_pore <- most_attractive;
 		location <- any_location_in(current_pore); //TODO a changer
 		
-		write "nouveau pore" + current_pore + "; x: " + current_pore.grid_x + ", y: " + current_pore.grid_y + ", z:" + current_pore.grid_z;
+		//write "nouveau pore" + current_pore + "; x: " + current_pore.grid_x + ", y: " + current_pore.grid_y + ", z:" + current_pore.grid_z;
 	}
+	
+	action predation()
+ 	{
+		float total_C_predated <- min([perceived_C, requested_C]);
+		//write "total_C_predated : " + total_C_predated + "(" + perceived_C +"," + requested_C + ")" ;
+		// Total C predated is computed from global perceptions, but N and P predated must be computed from the local state of each population.
+		float total_N_predated <- 0.0;
+		float total_P_predated <- 0.0;
+		
+		ask current_pore.populations
+		{	
+			// perceived_C = sum(C + cytocol_C) on all the populations. So, if total_C_predated = perceived_C,
+			// all the C is consumed from each population. Else if total_C_predated = requested_C, an equal proportion
+			// of total_C_predated/perceived_C is consumed from each population so that the total C consumed is equal to
+			// requested_C.
+			float total_C_predated_from_this_population <- (total_C_predated / myself.perceived_C) * (C + cytosol_C); //pourquoi cette formule ?
+			
+			//write "total_C_predated_from_this_population " + total_C_predated_from_this_population; 
+			
+			if (total_C_predated_from_this_population > 0.0) {
+				float C_predated_from_structural <- C/(C+cytosol_C) * total_C_predated_from_this_population;
+				float N_predated_from_structural <- C_predated_from_structural * N/C;
+				float P_predated_from_structural <- C_predated_from_structural * P/C;
+				
+				//write "C_predated_from_structural" + C_predated_from_structural;
+				//write "N_predated_from_structural" + N_predated_from_structural;
+				//write "P_predated_from_structural" + P_predated_from_structural;
+							
+				C <- C - C_predated_from_structural;
+				N <- N - N_predated_from_structural;
+				P <- P - P_predated_from_structural;
+				
+				total_N_predated <- total_N_predated + N_predated_from_structural;
+				total_P_predated <- total_P_predated + P_predated_from_structural;
+				
+				float C_predated_from_cytosol <- total_C_predated_from_this_population - C_predated_from_structural;
+				
+				//write "C_predated_from_cytosol" + C_predated_from_cytosol;
+				
+				if(C_predated_from_cytosol > 0.0) {
+					float N_predated_from_cytosol <- C_predated_from_cytosol * cytosol_N / cytosol_C;	
+					float P_predated_from_cytosol <- C_predated_from_cytosol * cytosol_P / cytosol_C;
+					
+					//write "N_predated_from_cytosol" + N_predated_from_cytosol;
+					//write "P_predated_from_cytosol" + P_predated_from_cytosol;
+						
+					cytosol_C <- cytosol_C - C_predated_from_cytosol;
+					cytosol_N <- cytosol_N - N_predated_from_cytosol;
+					cytosol_P <- cytosol_P - P_predated_from_cytosol;
+					
+					total_N_predated <- total_N_predated + N_predated_from_cytosol;
+					total_P_predated <- total_P_predated + P_predated_from_cytosol;
+				}
+			}
+		}
+		
+		float microbe_necromass_C <- total_C_predated*nematode_rejected_microbe_necromass_rate;
+		float microbe_necromass_N <- total_N_predated*nematode_rejected_microbe_necromass_rate;
+		float microbe_necromass_P <- total_P_predated*nematode_rejected_microbe_necromass_rate;
+		
+		do reject_to_dom(microbe_necromass_C, microbe_necromass_N, microbe_necromass_P); //Rejeté dans le dam (changement)
+		
+		stomack_C <- stomack_C + total_C_predated - microbe_necromass_C;
+		stomack_N <- stomack_N + total_N_predated - microbe_necromass_N;
+		stomack_P <- stomack_P + total_P_predated - microbe_necromass_P;
+ 	}
 	
 	action respirate()
 	{
@@ -98,7 +165,7 @@ species Nematode schedules:[]
 		float P_assimilated <- C_assimilated/nematode_C_P;
 		
 		// Assimilated C/N/P is actually rejected to labile as nematode necromass, to ensure nematode biomass stability
-		do reject_to_labile(C_assimilated, N_assimilated, P_assimilated);
+		do reject_to_dom(C_assimilated, N_assimilated, P_assimilated); //dejection rejeté dans le dam
 		
 		stomack_N <- stomack_N - N_assimilated;
 		stomack_P <- stomack_P - P_assimilated;
@@ -111,67 +178,17 @@ species Nematode schedules:[]
 		stomack_P <- 0.0;		
 	}
 	
-	action reject_to_labile(float C_rejected, float N_rejected, float P_rejected)
+	
+	action reject_to_dom(float C_rejected, float N_rejected, float P_rejected) 
 	{
-		ask current_pore.organic_particle {
-			C_labile <- C_labile + C_rejected;
-			N_labile <- N_labile + N_rejected;
-			P_labile <- P_labile + P_rejected;
+		ask current_pore.dam {
+			dom[0] <- dom[0] + N_rejected;
+			dom[1] <- dom[1] + P_rejected;
+			dom[2] <- dom[2] + C_rejected;
 		}
 	}
 	
- 	action predation(float perceived_C, float requested_C)
- 	{
-		float total_C_predated <- min([perceived_C, requested_C]);
-		// Total C predated is computed from global perceptions, but N and P predated must be computed from the local state of each population.
-		float total_N_predated <- 0.0;
-		float total_P_predated <- 0.0;
-		
-		ask current_pore.populations
-		{	
-			// perceived_C = sum(C + cytocol_C) on all the populations. So, if total_C_predated = perceived_C,
-			// all the C is consumed from each population. Else if total_C_predated = requested_C, an equal proportion
-			// of total_C_predated/perceived_C is consumed from each population so that the total C consumed is equal to
-			// requested_C.
-			float total_C_predated_from_this_population <- (total_C_predated / perceived_C) * (C + cytosol_C);
-			
-			if (total_C_predated_from_this_population > 0.0) {
-				float C_predated_from_structural <- C/(C+cytosol_C) * total_C_predated_from_this_population;
-				float N_predated_from_structural <- C_predated_from_structural * N/C;
-				float P_predated_from_structural <- C_predated_from_structural * P/C;
-							
-				C <- C - C_predated_from_structural;
-				N <- N - N_predated_from_structural;
-				P <- P - P_predated_from_structural;
-				
-				total_N_predated <- total_N_predated + N_predated_from_structural;
-				total_P_predated <- total_P_predated + P_predated_from_structural;
-				
-				float C_predated_from_cytosol <- total_C_predated_from_this_population - C_predated_from_structural;
-				if(C_predated_from_cytosol > 0.0) {
-					float N_predated_from_cytosol <- C_predated_from_cytosol * cytosol_N / cytosol_C;	
-					float P_predated_from_cytosol <- C_predated_from_cytosol * cytosol_P / cytosol_C;
-						
-					cytosol_C <- cytosol_C - C_predated_from_cytosol;
-					cytosol_N <- cytosol_N - N_predated_from_cytosol;
-					cytosol_P <- cytosol_P - P_predated_from_cytosol;
-					
-					total_N_predated <- total_N_predated + N_predated_from_cytosol;
-					total_P_predated <- total_P_predated + P_predated_from_cytosol;
-				}
-			}
-		}
-		
-		float microbe_necromass_C <- total_C_predated*nematode_rejected_microbe_necromass_rate;
-		float microbe_necromass_N <- total_N_predated*nematode_rejected_microbe_necromass_rate;
-		float microbe_necromass_P <- total_P_predated*nematode_rejected_microbe_necromass_rate;
-		
-		do reject_to_labile(microbe_necromass_C, microbe_necromass_N, microbe_necromass_P);
-		
-		stomack_C <- stomack_C + total_C_predated - microbe_necromass_C;
-		stomack_N <- stomack_N + total_N_predated - microbe_necromass_N;
-		stomack_P <- stomack_P + total_P_predated - microbe_necromass_P;
- 	}
+ 	
  	
  	aspect red_dot {
  		if(awake) {

@@ -88,7 +88,7 @@ species MicrobePopulation schedules:[]
 	/**
 	 * Structural C.
 	 * 
-	 * The structural C represents C fixed by the population.
+	 * The structural C represents C fixed by the population. 
 	 */
 	float C <- 0#gram;
 	/**
@@ -214,11 +214,12 @@ species MicrobePopulation schedules:[]
 	 * Updates active rate according to perceived nutrients.
 	 */
 	action sleep(Dam dam, float perceived_rate) {
-		float usable_C <- perceived_rate * dam.dom[2]+cytosol_C;
+		float usable_C <- perceived_rate * dam.dom[2]+cytosol_C; //Carbon from the dom + cytosol
 		float C_usable_for_respiration <- (1-carbon_use_efficiency) * usable_C;
 		
 		float usable_N <- perceived_rate * (dam.dom[0]+dam.dim[0])+cytosol_N;
 		float usable_P <- perceived_rate * (dam.dom[1]+dam.dim[1])+cytosol_P;
+		
 		float C_usable_for_growth <- min(
 			carbon_use_efficiency * usable_C,
 			usable_N * C_N,
@@ -247,8 +248,8 @@ species MicrobePopulation schedules:[]
 		// is available in the cytosol, nothing is consumed from the perceived
 		// C/N/P.
 		float assimilated_C <- min(dam.dom[2] * perceived_rate, max(0.0, requested_C-cytosol_C));
-		float assimilated_N <- dam.dom[0] > 0 ? assimilated_C * dam.dom[2] / dam.dom[0] : 0.0;
-		float assimilated_P <- dam.dom[1] > 0 ? assimilated_C * dam.dom[2] / dam.dom[1] : 0.0;
+		float assimilated_N <- dam.dom[2] > 0 ? assimilated_C * dam.dom[0] / dam.dom[2] : 0.0;
+		float assimilated_P <- dam.dom[2] > 0 ? assimilated_C * dam.dom[1] / dam.dom[2] : 0.0;
 
 		cytosol_C <- cytosol_C + assimilated_C;
 		cytosol_N <- cytosol_N + assimilated_N;
@@ -356,7 +357,7 @@ species MicrobePopulation schedules:[]
 	) {	
 		do sleep(dam, perceived_rate);
 		do assimilate(dam, perceived_rate);
-		do respirate;
+		do respirate();
 		do grow(dam, total_C_in_pore, pore_carrying_capacity);
 		do reject(dam);
 	}
@@ -395,17 +396,17 @@ species MicrobePopulation schedules:[]
 		ask simulated_annealing {
 			do optimize(enzymatic_activity_problem);
 			ask population.enzymes {
-				do die;
+				do die();
 			}
 			population.enzymes <- s.enzymes;
 			ask s {
 				ask weighted_enzymes {
-					do die;
+					do die();
 				}
 				ask decomposition {
-					do die;
+					do die();
 				}
-				do die;
+				do die();
 			}
 		}
 	}

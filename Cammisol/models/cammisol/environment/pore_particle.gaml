@@ -45,9 +45,10 @@ species PoreParticle schedules:[] {
 	
 	/**
 	 * OrganicParticle embedded within the PoreParticle. This is where nematodes spit out some C/N/P.
-	 */
-	OrganicParticle organic_particle;
 	
+	OrganicParticle organic_particle;
+	 */
+	 
 	Dam dam;
 	
 	list<MicrobePopulation> populations;

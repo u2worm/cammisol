@@ -12,17 +12,18 @@ import "environment/new_grid.gaml"
 import "nematode/nematode.gaml"
 
 global {
-	int nematodes_count <- 1;
+	bool do_opti <- true; // temporaire
+	int nematodes_count <- 0;
 		
 	// 5E8 -> 5E9 bacterie / gramme de sol
 	/*
 	 * A modifier................................................ 
 	 */
 	 // TODO: poids total de bactérie par gramme de sol * surface du modèle
-	/**
-	 * Total bacteria weight in the model.
-	 */
-	float total_initial_bacteria_weight <-  0.075#gram/(#cm*#cm)*world.shape.area;
+	// biomasse : Table 2 de l'ODD (sol noir : 124 mg C/kg)
+	float microbles_C_concentration <- 124e-6 #gram / #gram;
+	float total_initial_bacteria_weight <- microbles_C_concentration * soil_weight;
+	
 	// TODO: what rates?
 	float init_O_rate <- 0.1;
 	float init_F_rate <- 0.2;
@@ -32,14 +33,18 @@ global {
 	float rain_period <- 7#days;
 	 
 	init {
-		
+		do load_soil_file();
 		create soil number: 1; // définit les canevas, initialize_soil_from_canvas, materialize pour APSF
 		
-		do init_grid();
+		//do init_grid(); pas utile
 		do init_enzymatic_optimisation();
 		do init_enzymes();
 		// Counts the number of PORES after the initialization of the grid
 		int pores_count <- length(PoreParticle);
+		int mineral_count <- length(MineralParticle);
+		int organic_count <- length(OrganicParticle);
+		
+
 		ask PoreParticle {
 			// The carrying capacity of each pore is equal to 10 times the initial bacteria population
 			carrying_capacity <- 10 * total_initial_bacteria_weight / pores_count;
@@ -57,17 +62,22 @@ global {
 		
 		create Nematode number: nematodes_count
 		{
-			current_pore <- one_of(PoreParticle); 
+			self.current_pore <- one_of(PoreParticle); 
 			location <- current_pore.location;
 		}
-		
-		ask PoreParticle {
-			ask populations {
-				do update();
-				write "Initial enzymes optimization for " + self;
-				do optimize_enzymes(myself.dam, myself.accessible_organics);
+		if (do_opti){
+			ask PoreParticle {
+				ask populations {
+					do update();
+					write "Initial enzymes optimization for " + self;
+					do optimize_enzymes(myself.dam, myself.accessible_organics);
+				}
 			}
 		}
+		write "number of PoreParticle : " + pores_count;
+		write "number of MineralParticle : " + mineral_count;
+		write "number of OrganicParticle : " + organic_count;
+
 	}
 	
 
@@ -140,23 +150,35 @@ experiment base_cammisol_output {
 				if(my_type = PORE) {
 					color <- rgb(0, 0, 255 * sum(PoreParticle(domain_particle).populations collect (each.C + each.cytosol_C))/max_population);
 				}
-			}	
+			}
 		}
 	}
 	
 	output {
-		display vue type: opengl background: #white {
+		/*display vue type: opengl background: #white {
 			species soil aspect: cadre;
 			species particle aspect: base;
 			species Nematode aspect: red_dot visible: show_nematodes;
+		}*/
+		
+		display "CO2" type: java2D {
+			chart "Co2" type:series {
+				data "microbe_CO2_emissions (g)" value: microbe_CO2_emissions style:spline; 
+				data "nematode_CO2_emissions (g)" value: nematode_CO2_emissions style:spline;
+			}
 		}
 		
 
-		display "dam" type: java2D {
-			chart "dam composition" type:series {
+		display "dom" type: java2D {
+			chart "dom composition" type:series {
 				data "N dom (g)" value: sum(Dam collect each.dom[0])/#gram style:spline marker:false thickness:3;
 				data "P dom (g)" value: sum(Dam collect each.dom[1])/#gram style:spline marker:false thickness:3;
 				data "C dom (g)" value: sum(Dam collect each.dom[2])/#gram style:spline marker:false thickness:3;
+			}
+		}
+		
+		display "dim" type: java2D {
+			chart "dim composition" type:series {
 				data "N dim (g)" value: sum(Dam collect each.dim[0])/#gram style:spline marker:false thickness:3;
 				data "P dim (g)" value: sum(Dam collect each.dim[1])/#gram style:spline marker:false thickness:3;
 			}
@@ -212,49 +234,6 @@ experiment test_microbes parent:base_cammisol_output {
 	}
 }
 
-/*experiment display_grid { // date de la grille 2D
-	bool show_nematodes;
-	parameter "Show nematodes" var: show_nematodes <- false;
-	parameter "Grid size" category: "Environment" var:grid_size;
-	
-	output {
-		display grid type:2d axes:false {
-			grid Particle;
-			graphics legend {
-				draw square(cell_size) at: {soil_size + cell_size, 1.5*cell_size, 0} color: #yellow;
-				draw square(cell_size) at: {soil_size + cell_size, 2.8*cell_size, 0} color: #green;
-				draw square(cell_size) at: {soil_size + cell_size, 4.1*cell_size, 0} color: #black;
-				draw "Mineral particle" font:font("Helvetica", 20 , #bold) at: {soil_size + 2.1*cell_size, 1.7*cell_size, 0} color: #black;
-				draw "Organic particle" font:font("Helvetica", 20 , #bold) at: {soil_size + 2.1*cell_size, 3*cell_size, 0} color: #black;
-				draw "Pore particle" font:font("Helvetica", 20 , #bold) at: {soil_size + 2.1*cell_size, 4.3*cell_size, 0} color: #black;
-				if show_nematodes {
-					draw circle(cell_size/4) at: {soil_size + cell_size, 5.4*cell_size, 0} color: #red;
-					draw "Nematode" font:font("Helvetica", 20 , #bold) at: {soil_size + 2.1*cell_size, 5.5*cell_size, 0} color: #black;
-				}
-			}
-			species Nematode aspect: red_dot visible: show_nematodes;
-		}
-	}
-}*/
-
-/*experiment cammisol_no_output {
-
-	reflex state when: local_cycle mod 100 = 0 {
-		ask simulation {
-			write "Time: " + time/#day;
-			write "Dom: N=" + sum(Dam collect each.dom[0]) + ", P=" + sum(Dam collect each.dom[1]) + ", C=" + sum(Dam collect each.dom[2]);
-			write "Dim: N=" + sum(Dam collect each.dim[0]) + ", P=" + sum(Dam collect each.dim[1]);
-			write "Active nematodes: " + length(Nematode where each.awake);
-			write "";
-		}
-	}
-	
-	reflex when: (local_time>6#month) {
-		ask simulation {
-			do pause();
-		}
-	}
-}*/
 
 experiment cammisol parent:base_cammisol_output {
 	// Test to reactivate bacterias
