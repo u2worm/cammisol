@@ -54,7 +54,7 @@ global {
 		}
 		create SimulatedAnnealing with:[
 			objectives::[max_labile_C, max_C, cap_CN, cap_CP],
-			N::1000,
+			N::500,
 			epsilon::0.0
 		] {
 			simulated_annealing <- self;	

@@ -10,10 +10,12 @@ model cammisol
 
 import "environment/new_grid.gaml"
 import "nematode/nematode.gaml"
+// [Bilan de masse] Contrôle de conservation C/N/P et test de positivité à chaque pas
+import "mass_balance.gaml"
 
 global {
-	bool do_opti <- true; // temporaire
-	int nematodes_count <- 0;
+	bool do_opti <- false; // temporaire
+	int nematodes_count <- 500;
 		
 	// 5E8 -> 5E9 bacterie / gramme de sol
 	/*
@@ -83,6 +85,10 @@ global {
 
 
 	reflex {
+		// [Bilan de masse] Capture de l'état de référence au premier pas (sans effet ensuite).
+		// Fait ici et non dans init : les init d'expérience (ex. test_microbes) s'exécutent après.
+		do mb_ensure_reference();
+
 		ask shuffle(Nematode) {
 			do life();
 		}
@@ -96,6 +102,11 @@ global {
 			do decompose();
 			do microbe_life();
 		}
+
+		// [Bilan de masse] Contrôle à la fin du pas, une fois tous les processus exécutés.
+		// Appelé ici plutôt que dans un reflex séparé : l'ordre d'exécution des reflex globaux
+		// sans nom répartis dans plusieurs fichiers importés n'est pas garanti.
+		do mb_check();
 	}
 }
 
@@ -136,7 +147,14 @@ experiment base_cammisol_output {
 	parameter "Style des pores" var: style_pores category: "Affichage";
 	parameter "Afficher le cadre" var: voir_cadre category: "Affichage";
 	parameter "Show nematodes" var: show_nematodes category: "Affichage";
-	
+
+	// [Bilan de masse] Paramètres du contrôle de conservation et de positivité
+	parameter "Activer le bilan de masse" var: mb_enabled category: "Bilan de masse";
+	parameter "Seuil d'alerte (erreur relative)" var: mb_tolerance category: "Bilan de masse";
+	parameter "Pause en cas d'alerte" var: mb_pause_on_error category: "Bilan de masse";
+	parameter "Test de positivité" var: mb_check_positivity category: "Bilan de masse";
+	parameter "Tolérance de positivité (relative)" var: mb_positivity_tolerance category: "Bilan de masse";
+
 	reflex update_particle_color {
 		float max_population <- 0.0;
 		ask PoreParticle {
@@ -150,7 +168,7 @@ experiment base_cammisol_output {
 				if(my_type = PORE) {
 					color <- rgb(0, 0, 255 * sum(PoreParticle(domain_particle).populations collect (each.C + each.cytosol_C))/max_population);
 				}
-			}
+			}	
 		}
 	}
 	
@@ -161,12 +179,12 @@ experiment base_cammisol_output {
 			species Nematode aspect: red_dot visible: show_nematodes;
 		}*/
 		
-		display "CO2" type: java2D {
+		/*display "CO2" type: java2D {
 			chart "Co2" type:series {
 				data "microbe_CO2_emissions (g)" value: microbe_CO2_emissions style:spline; 
 				data "nematode_CO2_emissions (g)" value: nematode_CO2_emissions style:spline;
 			}
-		}
+		}*/
 		
 
 		display "dom" type: java2D {
@@ -183,7 +201,7 @@ experiment base_cammisol_output {
 				data "P dim (g)" value: sum(Dam collect each.dim[1])/#gram style:spline marker:false thickness:3;
 			}
 		}
-		
+		/* 
 		display "organics_labile" type:java2D {
 			chart "Organics labile" type:series {
 				data "C labile (g)" value: sum(OrganicParticle collect each.C_labile)/#gram style:spline marker:false thickness:3;
@@ -200,12 +218,58 @@ experiment base_cammisol_output {
 			}
 		}
 		
-		
+		*/
 		display "populations" type:java2D {
 			chart "Bacteria populations" type:series {
 				data "O (g)" value: sum(O_Strategist collect each.C)/#gram style:spline color: #red marker:false thickness:3;
 				data "F (g)" value: sum(F_Strategist collect each.C)/#gram style:spline color: #green marker:false thickness:3;
 				data "M (g)" value: sum(M_Strategist collect each.C)/#gram style:spline color: #blue marker:false thickness:3;
+			}
+		}
+
+		// [Bilan de masse] Erreur relative de conservation pour C, N et P.
+		// Lecture : ~1e-16 à 1e-11 = arrondis (normal) ; saut brutal = un processus crée/détruit
+		// de la matière à ce pas ; dérive régulière = fuite systématique. Signe + = création.
+		display "Bilan de masse - erreur relative" type: java2D {
+			chart "Erreur relative de conservation" type: series {
+				data "C" value: mb_C_rel_error style: line color: #black marker: false thickness: 2;
+				data "N" value: mb_N_rel_error style: line color: #blue marker: false thickness: 2;
+				data "P" value: mb_P_rel_error style: line color: #orange marker: false thickness: 2;
+			}
+		}
+
+		// [Bilan de masse] Répartition du C entre compartiments (où se trouve la matière).
+		// La somme POM + DOM + microbes + nématodes + CO2 doit rester égale à C initial + entrées.
+		display "Bilan de masse - répartition du C" type: java2D {
+			chart "Répartition du C (g)" type: series {
+				data "POM" value: mb_C_pom / #gram style: line color: #green marker: false thickness: 2;
+				data "DOM" value: mb_C_dom / #gram style: line color: #blue marker: false thickness: 2;
+				data "Microbes (struct. + cytosol)" value: mb_C_microbes / #gram style: line color: #red marker: false thickness: 2;
+				data "Nématodes (estomac)" value: mb_C_nematodes / #gram style: line color: #purple marker: false thickness: 2;
+				data "CO2 cumulé" value: mb_C_co2 / #gram style: line color: #gray marker: false thickness: 2;
+				data "C initial + entrées" value: (mb_C_ref + mb_C_input) / #gram style: line color: #black marker: false thickness: 1;
+			}
+		}
+		
+		display "Bilan de masse - répartition du P" type: java2D {
+			chart "Répartition du P (g)" type: series {
+				data "POM" value: mb_P_pom / #gram style: line color: #green marker: false thickness: 2;
+				data "DAM" value: mb_P_dam / #gram style: line color: #blue marker: false thickness: 2;
+				data "Microbes (struct. + cytosol)" value: mb_P_microbes / #gram style: line color: #red marker: false thickness: 2;
+				data "Nématodes (estomac)" value: mb_P_nematodes / #gram style: line color: #purple marker: false thickness: 2;
+				data "MAM" value: mb_P_mam / #gram style: line color: #gray marker: false thickness: 2;
+				data "P initial + entrées" value: (mb_P_ref + mb_P_input) / #gram style: line color: #black marker: false thickness: 1;
+			}
+		}
+		
+		display "Bilan de masse - répartition du N" type: java2D {
+			chart "Répartition du N (g)" type: series {
+				data "POM" value: mb_N_pom / #gram style: line color: #green marker: false thickness: 2;
+				data "DAM" value: mb_N_dam / #gram style: line color: #blue marker: false thickness: 2;
+				data "Microbes (struct. + cytosol)" value: mb_N_microbes / #gram style: line color: #red marker: false thickness: 2;
+				data "Nématodes (estomac)" value: mb_N_nematodes / #gram style: line color: #purple marker: false thickness: 2;
+				data "MAM" value: mb_N_mam / #gram style: line color: #gray marker: false thickness: 2;
+				data "P initial + entrées" value: (mb_N_ref + mb_N_input) / #gram style: line color: #black marker: false thickness: 1;
 			}
 		}
 	}
@@ -246,7 +310,11 @@ experiment cammisol parent:base_cammisol_output {
 			float carbon_in_all_pore <- soil_weight * C_concentration_in_dom; 
 			float azote_in_all_pore <- soil_weight * N_concentration_in_dom;
 			float phosphore_in_all_pore <- soil_weight * P_concentration_in_dom;
-			
+
+			// [Bilan de masse] Cet apport vient de l'extérieur du système : on le déclare
+			// AVANT de l'ajouter, sinon il serait vu comme une création de matière.
+			do mb_register_input(carbon_in_all_pore, azote_in_all_pore, phosphore_in_all_pore);
+
 			ask PoreParticle {
 				ask dam {
 					float carbon_in_pore <- carbon_in_all_pore / pores_count;
