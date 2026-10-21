@@ -29,6 +29,11 @@ global {
 	map<string, list> canvases <- []; // tableau de cellules
 	string root_canvas <- "C0"; // racine du caneva
 
+	// [Voisinage] true : voisinage par faces (6 directions, multi-échelle, symétrique, sans doublon),
+	// fourni par la variable my_face_neighbors du plugin (nécessite le plugin recompilé).
+	// false : ancien voisinage de Moore 3D (26 voisins, my_neighbors), conservé pour comparaison.
+	bool voisinage_faces <- true;
+
 
 	geometry shape <- cube(soil_size);
 	float z_bas;
@@ -120,11 +125,22 @@ global {
 		ask pore_cells {
 			PoreParticle pp <- PoreParticle(domain_particle);
 
-			// Voisins réels de la cellule, hors elle-même : le skill APSF renvoie 27 positions
-
+			// [Voisinage] Construction de la liste des voisins de la cellule
 			list<particle> vois <- [];
-			loop v over: my_neighbors {
-				if (v != self) { add v to: vois; } //on en veut pas que la cellule courante soit voisine
+			if (voisinage_faces) {
+				// Voisinage par faces : le plugin renvoie déjà une liste sans la cellule elle-même et sans
+				// doublon. Entre deux échelles, une grosse cellule voit tous les petits voisins collés à ses
+				// faces, et chaque petit voit la grosse : la relation est symétrique.
+				// (Les surfaces de contact sont disponibles dans my_face_contact_areas, même ordre,
+				// mais ne sont pas encore utilisées : ce sera un changement séparé.)
+				loop v over: my_face_neighbors {
+					add particle(v) to: vois;
+				}
+			} else {
+				// Ancien voisinage de Moore 3D : le skill APSF renvoie 27 positions, cellule comprise
+				loop v over: my_neighbors {
+					if (v != self) { add particle(v) to: vois; } //on en veut pas que la cellule courante soit voisine
+				}
 			}
 
 			ask pp {
@@ -143,6 +159,25 @@ global {
 				}
 			}
 		}
+
+		// [Voisinage] Diagnostic de la structure obtenue, écrit dans la console à l'initialisation.
+		// Sert à vérifier l'effet du choix de voisinage et à repérer les cas particuliers :
+		//  - pores isolés (aucun pore voisin) : un nématode qui y arrive ne peut plus en sortir ;
+		//  - pores sans organique voisin : leurs microbes ne peuvent rien décomposer ;
+		//  - organiques sans pore voisin : POM inaccessible à tous les microbes (MO « occluse »).
+		list<PoreParticle> all_pores <- list<PoreParticle>(pore_cells collect each.domain_particle);
+		list<OrganicParticle> reachable <- remove_duplicates(all_pores accumulate each.accessible_organics);
+		int nb_isolated_pores <- length(all_pores where (length(each.pore_neighbors) <= 1)); // seul voisin = lui-même
+		int nb_pores_without_organic <- length(all_pores where empty(each.accessible_organics));
+		int nb_unreachable_organics <- length(OrganicParticle) - length(reachable);
+		write "[Voisinage] " + (voisinage_faces ? "par faces (6, multi-échelle)" : "Moore 3D (26)") + " :";
+		write "  pores voisins par pore (moyenne, hors lui-même) : "
+			+ (empty(all_pores) ? 0.0 : mean(all_pores collect (length(each.pore_neighbors) - 1)));
+		write "  organiques accessibles par pore (moyenne) : "
+			+ (empty(all_pores) ? 0.0 : mean(all_pores collect length(each.accessible_organics)));
+		write "  pores isolés : " + nb_isolated_pores + " / " + length(all_pores);
+		write "  pores sans organique voisin : " + nb_pores_without_organic + " / " + length(all_pores);
+		write "  organiques inaccessibles (aucun pore voisin) : " + nb_unreachable_organics + " / " + length(OrganicParticle);
 
 		do init_POM(C: C_concentration_in_pom, N: N_concentration_in_pom, P: P_concentration_in_pom);
 	}

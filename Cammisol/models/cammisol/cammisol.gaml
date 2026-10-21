@@ -10,7 +10,6 @@ model cammisol
 
 import "environment/new_grid.gaml"
 import "nematode/nematode.gaml"
-// [Bilan de masse] Contrôle de conservation C/N/P et test de positivité à chaque pas
 import "mass_balance.gaml"
 
 global {
@@ -113,6 +112,8 @@ global {
 experiment base_cammisol_output {
 	parameter "Soil size" category: "Environment" var:soil_size;
 	parameter "Nematodes count" category: "Environment" var:nematodes_count;
+	// [Voisinage] Choix du voisinage : par faces (6, multi-échelle) ou ancien Moore 3D (26), pour comparaison
+	parameter "Voisinage par faces (6)" category: "Environment" var:voisinage_faces;
 	//parameter "Organic particle rate" category: "Environment" var:organic_rate;
 	//parameter "Mineral particle rate" category: "Environment" var:mineral_rate;
 	parameter "Init C (FOM)" category: "Environment" var:C_concentration_in_pom;
@@ -269,7 +270,7 @@ experiment base_cammisol_output {
 				data "Microbes (struct. + cytosol)" value: mb_N_microbes / #gram style: line color: #red marker: false thickness: 2;
 				data "Nématodes (estomac)" value: mb_N_nematodes / #gram style: line color: #purple marker: false thickness: 2;
 				data "MAM" value: mb_N_mam / #gram style: line color: #gray marker: false thickness: 2;
-				data "P initial + entrées" value: (mb_N_ref + mb_N_input) / #gram style: line color: #black marker: false thickness: 1;
+				data "N initial + entrées" value: (mb_N_ref + mb_N_input) / #gram style: line color: #black marker: false thickness: 1;
 			}
 		}
 	}
