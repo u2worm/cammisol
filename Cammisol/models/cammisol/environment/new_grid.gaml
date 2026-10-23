@@ -29,6 +29,15 @@ global {
 	map<string, list> canvases <- []; // tableau de cellules
 	string root_canvas <- "C0"; // racine du caneva
 
+	// [Canevas] Canevas « déroulés » par niveau, réellement envoyés au plugin (voir unroll_canvases).
+	// Chaque canevas du fichier est recopié une fois par niveau où il est utilisé, sous le nom
+	// <nom>@<niveau> (ex. "C1@2"). Cela permet de traiter différemment le dernier niveau, et de gérer
+	// les canevas qui se référencent eux-mêmes (vrai fractal) sans dépendance circulaire.
+	map<string, list> canvases_deployed <- [];
+	string root_canvas_deployed <- "";      // nom de la racine : root_canvas + "@1"
+	string LEVEL_SEPARATOR <- "@";          // séparateur nom/niveau, interdit dans les noms du fichier
+	int min_canvas_size <- 3;               // taille minimale d'un canevas (voir validate_canvases)
+
 	// [Voisinage] true : voisinage par faces (6 directions, multi-échelle, symétrique, sans doublon),
 	// fourni par la variable my_face_neighbors du plugin (nécessite le plugin recompilé).
 	// false : ancien voisinage de Moore 3D (26 voisins, my_neighbors), conservé pour comparaison.
@@ -93,6 +102,145 @@ global {
 	    write "Fichier : " + soil_file;
 	    write "Taille grille : " + division;
 	    write "Canvas disponibles : " + canvases.keys;
+
+	    // [Canevas] Vérifications puis déroulage par niveau, avant tout envoi au plugin
+	    do validate_canvases();
+	    do unroll_canvases();
+	}
+
+	// ============================================================ // Vérification des canevas // ============================================================
+
+	/**
+	 * [Canevas] Vérifie la cohérence des canevas lus dans le fichier JSON. Toute anomalie arrête la
+	 * simulation avec un message explicite (plutôt qu'une erreur obscure plus loin dans le plugin).
+	 */
+	action validate_canvases() {
+		list<string> base_types <- [PORE, ORGANIC, MINERAL];
+
+		// au moins un canevas, et le canevas racine (root_canvas) existe ;
+		if (empty(canvases.keys)) { error "[Canevas] Aucun canevas dans le fichier " + soil_file; }
+		if (!(root_canvas in canvases.keys)) {
+			error "[Canevas] Le canevas racine '" + root_canvas + "' n'existe pas dans " + soil_file
+				+ " (canevas disponibles : " + canvases.keys + ")";
+		}
+		// n >= 3 : avec le tore, un canevas de 2 de côté donnerait le même voisin
+		if (division < min_canvas_size) {
+			error "[Canevas] Taille de canevas " + division + " < " + min_canvas_size
+				+ " : avec le tore, les voisins x-1 et x+1 seraient la même cellule.";
+		}
+
+		loop canvas_name over: canvases.keys {
+			// aucun nom de canevas ne contient le séparateur "@" ni ne vaut "pore", "organic" ou "mineral" ;
+			if (canvas_name contains LEVEL_SEPARATOR) {
+				error "[Canevas] Le nom '" + canvas_name + "' contient '" + LEVEL_SEPARATOR + "', réservé au déroulage par niveau.";
+			}
+			if (canvas_name in base_types) {
+				error "[Canevas] Le nom de canevas '" + canvas_name + "' est réservé (type de cellule).";
+			}
+			// chaque canevas est un cube n x n x n ;
+			// n est le même pour tous les canevas et égal au champ "size" du fichier
+			list planes <- list(canvases[canvas_name]);
+			if (length(planes) != division) {
+				error "[Canevas] '" + canvas_name + "' a " + length(planes) + " plans au lieu de " + division
+					+ " (tous les canevas doivent avoir la taille 'size' du fichier).";
+			}
+			loop i from: 0 to: length(planes) - 1 {
+				list rows <- list(planes[i]);
+				if (length(rows) != division) {
+					error "[Canevas] '" + canvas_name + "', plan " + i + " : " + length(rows) + " lignes au lieu de " + division;
+				}
+				loop j from: 0 to: length(rows) - 1 {
+					list cells <- list(rows[j]);
+					if (length(cells) != division) {
+						error "[Canevas] '" + canvas_name + "', plan " + i + ", ligne " + j + " : "
+							+ length(cells) + " cellules au lieu de " + division;
+					}
+					// chaque cellule vaut "pore", "organic", "mineral" ou le nom d'un canevas
+					loop k from: 0 to: length(cells) - 1 {
+						string t <- string(cells[k]);
+						if (!(t in base_types) and !(t in canvases.keys)) {
+							error "[Canevas] '" + canvas_name + "' [" + i + "][" + j + "][" + k + "] : type de cellule inconnu '" + t + "'";
+						}
+					}
+				}
+			}
+		}
+		write "[Canevas] Vérification OK : " + length(canvases.keys) + " canevas de " + division + "x" + division + "x" + division;
+	}
+
+	/**
+	 * [Canevas] Déroule l'arbre des canevas niveau par niveau, de 1 (racine) à 'niveaux'.
+	 *
+	 * un même canevas peut être utilisé à plusieurs niveaux (et même se contenir lui-même).
+	 * Or les cellules décomposables ne doivent être remplacées qu'au DERNIER niveau. On crée donc une
+	 * copie par niveau, nommée <nom>@<niveau> :
+	 *  - à un niveau L, une cellule qui référence le canevas Y devient une référence à "Y@(L+1)" ;
+	 *
+	 * Seuls les canevas atteignables depuis la racine sont déroulés.
+	 */
+	action unroll_canvases() {
+		if (niveaux < 1) { error "[Canevas] 'niveaux' doit être >= 1 (valeur : " + niveaux + ")"; }
+
+		canvases_deployed <- [];
+		root_canvas_deployed <- root_canvas + LEVEL_SEPARATOR + 1;
+
+		// Nombre d'exemplaires de chaque canevas source au niveau courant (la racine existe une fois)
+		map<string, int> instances_current <- [root_canvas::1];
+		int replaced_in_definitions <- 0;   // cases modifiées dans les copies
+		int replaced_in_soil <- 0;          // cellules réellement concernées dans le sol
+		list<string> summary <- [];         // ex. "C1@2 x15"
+		list<string> used_sources <- [];    // canevas du fichier effectivement utilisés
+
+		loop level from: 1 to: niveaux {
+			map<string, int> instances_next <- [];
+			loop src over: instances_current.keys {
+				int nb_instances <- instances_current[src];
+				int replaced_here <- 0;
+				list<list<list<string>>> new_planes <- [];
+				loop plane over: list(canvases[src]) {
+					list<list<string>> new_rows <- [];
+					loop row over: list(plane) {
+						list<string> new_cells <- [];
+						loop c over: list(row) {
+							string t <- string(c);
+							if (t in canvases.keys) {
+								// Cellule décomposable
+								if (level < niveaux) {
+									add t + LEVEL_SEPARATOR + (level + 1) to: new_cells;
+									instances_next[t] <- (instances_next contains_key t ? instances_next[t] : 0) + nb_instances;
+								} else {
+									add PORE to: new_cells;   // dernier niveau : décomposable remplacée par un pore
+									replaced_here <- replaced_here + 1;
+								}
+							} else {
+								add t to: new_cells;          // pore, organique ou minéral : inchangé
+							}
+						}
+						add new_cells to: new_rows;
+					}
+					add new_rows to: new_planes;
+				}
+				string unrolled_name <- src + LEVEL_SEPARATOR + level;
+				canvases_deployed[unrolled_name] <- new_planes;
+				summary <+ unrolled_name + " x" + nb_instances;
+				if (!(used_sources contains src)) { used_sources <+ src; }
+				replaced_in_definitions <- replaced_in_definitions + replaced_here;
+				replaced_in_soil <- replaced_in_soil + replaced_here * nb_instances;
+			}
+			instances_current <- instances_next;
+			if (empty(instances_current)) { break; }   // plus aucune décomposable : arbre terminé
+		}
+
+		//write "[Canevas] Déroulage sur " + niveaux + " niveau(x) : " + summary;
+		// Canevas du fichier jamais atteints depuis la racine (simple information)
+		list<string> unused <- canvases.keys where !(used_sources contains each);
+		if (!empty(unused)) { write "[Canevas] Canevas non utilisés depuis la racine '" + root_canvas + "' : " + unused; }
+		if (replaced_in_soil > 0) {
+			string msg <- "[Canevas] " + replaced_in_soil + " cellule(s) décomposable(s) au dernier niveau (" + niveaux
+				+ ") remplacée(s) par des pores dans le sol (" + replaced_in_definitions;
+			warn msg;
+			write msg;
+		}
 	}
 	
 	
@@ -217,7 +365,9 @@ species soil skills: [camisole] {
         z_bas <- location.z - soil_size / 2;
 
         // On définit les canvas dans l'ordre des dépendances (C1 avant C0)
-        list<string> to_define <- copy(canvases.keys);
+        // [Canevas] On envoie au plugin les canevas déroulés par niveau (canvases_deployed, construits par
+        // unroll_canvases dans load_soil_file), et non plus les canevas bruts du fichier.
+        list<string> to_define <- copy(canvases_deployed.keys);
         list<string> defined <- [];
         int guard <- 0;
 
@@ -227,10 +377,10 @@ species soil skills: [camisole] {
             loop canvas_name over: copy(to_define) {
                 // noms de canvas utilisés comme cellules dans ce canvas
                 list<string> deps <- [];
-                loop plan over: list(canvases[canvas_name]) {
+                loop plan over: list(canvases_deployed[canvas_name]) {
                     loop row over: list(plan) {
                         loop c over: list(row) {
-                            if (string(c) in canvases.keys) { deps <+ string(c); }
+                            if (string(c) in canvases_deployed.keys) { deps <+ string(c); }
                         }
                     }
                 }
@@ -238,7 +388,7 @@ species soil skills: [camisole] {
                 if (deps all_match (each in defined)) {
                     do define_canvas(
                         name: canvas_name,
-                        cells: list<list<list<string>>>(canvases[canvas_name])
+                        cells: list<list<list<string>>>(canvases_deployed[canvas_name])
                     );
                     defined <+ canvas_name;
                     to_define >- canvas_name;
@@ -252,7 +402,7 @@ species soil skills: [camisole] {
         }
 
         do initialize_soil_from_canvas(
-            from_canvas: root_canvas,
+            from_canvas: root_canvas_deployed,   // [Canevas] racine déroulée (ex. "C0@1")
             default_species: particle,
             size: soil_size
         );

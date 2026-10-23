@@ -174,11 +174,11 @@ experiment base_cammisol_output {
 	}
 	
 	output {
-		/*display vue type: opengl background: #white {
+		display vue type: opengl background: #white {
 			species soil aspect: cadre;
 			species particle aspect: base;
 			species Nematode aspect: red_dot visible: show_nematodes;
-		}*/
+		}
 		
 		/*display "CO2" type: java2D {
 			chart "Co2" type:series {
@@ -231,7 +231,7 @@ experiment base_cammisol_output {
 		// [Bilan de masse] Erreur relative de conservation pour C, N et P.
 		// Lecture : ~1e-16 à 1e-11 = arrondis (normal) ; saut brutal = un processus crée/détruit
 		// de la matière à ce pas ; dérive régulière = fuite systématique. Signe + = création.
-		display "Bilan de masse - erreur relative" type: java2D {
+		/*display "Bilan de masse - erreur relative" type: java2D {
 			chart "Erreur relative de conservation" type: series {
 				data "C" value: mb_C_rel_error style: line color: #black marker: false thickness: 2;
 				data "N" value: mb_N_rel_error style: line color: #blue marker: false thickness: 2;
@@ -272,7 +272,7 @@ experiment base_cammisol_output {
 				data "MAM" value: mb_N_mam / #gram style: line color: #gray marker: false thickness: 2;
 				data "N initial + entrées" value: (mb_N_ref + mb_N_input) / #gram style: line color: #black marker: false thickness: 1;
 			}
-		}
+		}*/
 	}
 }
 
