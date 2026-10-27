@@ -174,11 +174,11 @@ experiment base_cammisol_output {
 	}
 	
 	output {
-		display vue type: opengl background: #white {
+		/*display vue type: opengl background: #white {
 			species soil aspect: cadre;
 			species particle aspect: base;
 			species Nematode aspect: red_dot visible: show_nematodes;
-		}
+		}*/
 		
 		/*display "CO2" type: java2D {
 			chart "Co2" type:series {
@@ -237,7 +237,7 @@ experiment base_cammisol_output {
 				data "N" value: mb_N_rel_error style: line color: #blue marker: false thickness: 2;
 				data "P" value: mb_P_rel_error style: line color: #orange marker: false thickness: 2;
 			}
-		}
+		}*/
 
 		// [Bilan de masse] Répartition du C entre compartiments (où se trouve la matière).
 		// La somme POM + DOM + microbes + nématodes + CO2 doit rester égale à C initial + entrées.
@@ -272,7 +272,7 @@ experiment base_cammisol_output {
 				data "MAM" value: mb_N_mam / #gram style: line color: #gray marker: false thickness: 2;
 				data "N initial + entrées" value: (mb_N_ref + mb_N_input) / #gram style: line color: #black marker: false thickness: 1;
 			}
-		}*/
+		}
 	}
 }
 

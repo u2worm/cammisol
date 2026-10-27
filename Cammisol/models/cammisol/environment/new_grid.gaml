@@ -54,9 +54,13 @@ global {
 
 	// TODO Est ce que ces concentrations sont les memes a toutes les échelles ?
 
-	float C_concentration_in_pom <- 0.02246#gram / (#cm * #cm * #cm);
-	float N_concentration_in_pom <- 0.00137#gram / (#cm * #cm * #cm);
-	float P_concentration_in_pom <- 0.00070#gram / (#cm * #cm * #cm);
+	// [Initialisation] Concentrations de la POM PAR MASSE DE SOL SEC (g / g de sol), comme le Tableau 1
+	// de l'ODD (sol noir : 22.46 g C, 1.37 g N, 0.700 g P par kg de sol). Le total de POM du domaine vaut
+	// concentration x soil_weight, réparti ensuite entre les organiques au prorata de leur volume (init_POM).
+	// (Avant l'étape A1 : mêmes chiffres mais en g/cm3, appliqués au seul volume des cellules organiques.)
+	float C_concentration_in_pom <- 0.02246 #gram / #gram;
+	float N_concentration_in_pom <- 0.00137 #gram / #gram;
+	float P_concentration_in_pom <- 0.00070 #gram / #gram;
 
 	float C_concentration_in_dom <- (729.0 * 10 ^ -6) #gram / #gram;
 	float N_concentration_in_dom <- (60.0 * 10 ^ -6) #gram / #gram;
@@ -330,31 +334,57 @@ global {
 		do init_POM(C: C_concentration_in_pom, N: N_concentration_in_pom, P: P_concentration_in_pom);
 	}
 
+	/**
+	 * [Initialisation] Étape A1 : répartition de la POM initiale au prorata du VOLUME des cellules organiques.
+	 * C, N, P : concentrations par masse de sol sec (g/g, Tableau 1 de l'ODD).
+	 *  - total du domaine : X_tot = X x soil_weight (indépendant du canevas et du nombre de niveaux) ;
+	 *  - chaque organique reçoit X_tot x size^3 / somme des size^3 : la densité (g/m3) est donc la même
+	 *    dans toutes les cellules organiques, quelle que soit leur taille.
+	 * Avant A1, chaque organique recevait X x (soil_size/division)^3, quelle que soit sa taille réelle,
+	 * ce qui surestimait fortement la POM en multi-niveau (x5 sur grid2 à 2 niveaux).
+	 */
 	action init_POM(float C, float N, float P) {
-		write "Soil C (pom): " + C / (#kg / #m3) + "kg/m3";
-		write "Soil N (pom): " + N / (#kg / #m3) + "kg/m3";
-		write "Soil P (pom): " + P / (#kg / #m3) + "kg/m3";
+		write "Soil C (pom): " + C / (#gram / #kg) + " g/kg de sol";
+		write "Soil N (pom): " + N / (#gram / #kg) + " g/kg de sol";
+		write "Soil P (pom): " + P / (#gram / #kg) + " g/kg de sol";
 
-		// TODO remplacer par le vrai volume de la cellule APSF (particle.size^3)
-		float cell_volume <- (soil_size / division) ^ 3;
-
-		float C_labile_in_each_organic <- labile_rate_pom * C * cell_volume;
-		float N_labile_in_each_organic <- labile_rate_pom * N * cell_volume;
-		float P_labile_in_each_organic <- labile_rate_pom * P * cell_volume;
-		float C_recal_in_each_organic <- (1 - labile_rate_pom) * C * cell_volume;
-		float N_recal_in_each_organic <- (1 - labile_rate_pom) * N * cell_volume;
-		float P_recal_in_each_organic <- (1 - labile_rate_pom) * P * cell_volume;
-
-		ask OrganicParticle {
-			if (!in_pore) {
-				C_labile <- C_labile_in_each_organic;
-				N_labile <- N_labile_in_each_organic;
-				P_labile <- P_labile_in_each_organic;
-				C_recalcitrant <- C_recal_in_each_organic;
-				N_recalcitrant <- N_recal_in_each_organic;
-				P_recalcitrant <- P_recal_in_each_organic;
-			}
+		list<OrganicParticle> organics <- OrganicParticle where (!each.in_pore);
+		float total_volume <- sum(organics collect (each.size ^ 3));
+		if (empty(organics) or total_volume <= 0.0) {
+			warn "[Initialisation] Aucune particule organique : la POM initiale n'est pas attribuée.";
+			return;
 		}
+
+		// [Initialisation] Totaux du domaine (cibles du test)
+		float C_total <- C * soil_weight;
+		float N_total <- N * soil_weight;
+		float P_total <- P * soil_weight;
+
+		ask organics {
+			float w <- (size ^ 3) / total_volume;   // part du volume organique total portée par cette cellule
+			C_labile <- labile_rate_pom * C_total * w;
+			N_labile <- labile_rate_pom * N_total * w;
+			P_labile <- labile_rate_pom * P_total * w;
+			C_recalcitrant <- (1 - labile_rate_pom) * C_total * w;
+			N_recalcitrant <- (1 - labile_rate_pom) * N_total * w;
+			P_recalcitrant <- (1 - labile_rate_pom) * P_total * w;
+		}
+
+		// [Initialisation] Diagnostic / test A1, écrit dans la console :
+		//  1. somme des organiques = cible (écart relatif attendu < 1e-12) ;
+		//  2. densité C / volume identique dans toutes les cellules (rapport max/min attendu = 1).
+		float C_sum <- sum(organics collect (each.C_labile + each.C_recalcitrant));
+		float N_sum <- sum(organics collect (each.N_labile + each.N_recalcitrant));
+		float P_sum <- sum(organics collect (each.P_labile + each.P_recalcitrant));
+		list<float> densities <- organics collect ((each.C_labile + each.C_recalcitrant) / (each.size ^ 3));
+		list<float> sizes <- remove_duplicates(organics collect each.size);
+		write "[Initialisation] POM : " + length(organics) + " organiques, " + length(sizes) + " taille(s), "
+			+ "volume organique = " + (100 * total_volume / (soil_size ^ 3)) + " % du domaine";
+		write "  masse de sol = " + (soil_weight / #kg) + " kg";
+		write "  C POM = " + (C_sum / #gram) + " g (cible " + (C_total / #gram) + " g, écart relatif " + (abs(C_sum - C_total) / C_total) + ")";
+		write "  N POM = " + (N_sum / #gram) + " g (cible " + (N_total / #gram) + " g, écart relatif " + (abs(N_sum - N_total) / N_total) + ")";
+		write "  P POM = " + (P_sum / #gram) + " g (cible " + (P_total / #gram) + " g, écart relatif " + (abs(P_sum - P_total) / P_total) + ")";
+		write "  densité C max / min entre organiques = " + (max(densities) / min(densities));
 	}
 }
 
