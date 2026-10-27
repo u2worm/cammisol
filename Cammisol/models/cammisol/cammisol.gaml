@@ -47,25 +47,41 @@ global {
 		
 
 		ask PoreParticle {
+			//  biomasse et capacité de charge au en fonction du volume du pore
+			// (part_volume, calculée dans init_grid).
 			// The carrying capacity of each pore is equal to 10 times the initial bacteria population
-			carrying_capacity <- 10 * total_initial_bacteria_weight / pores_count;
 			
-			create O_Strategist with: [C::init_O_rate * total_initial_bacteria_weight / length(PoreParticle)]{
+			carrying_capacity <- 10 * total_initial_bacteria_weight * part_volume;
+			float C_O <- init_O_rate * total_initial_bacteria_weight * part_volume;
+			float C_F <- init_F_rate * total_initial_bacteria_weight * part_volume;
+			float C_M <- init_M_rate * total_initial_bacteria_weight * part_volume;
+			
+			create O_Strategist with: [C::C_O]{
 				add self to:myself.populations;
 			}
-			create F_Strategist with: [C::init_F_rate * total_initial_bacteria_weight / length(PoreParticle)]{
+			create F_Strategist with: [C::C_F]{
 				add self to:myself.populations;
 			}
-			create M_Strategist with: [C::init_M_rate * total_initial_bacteria_weight / length(PoreParticle)]{
+			create M_Strategist with: [C::C_M]{
 				add self to:myself.populations;
 			}
 		}
 		
+		// les nématodes sont placés au en fonction du volume des pores,
+	
+		list<PoreParticle> pores_nematodes <- PoreParticle where (each.size >= taille_min_pore_nematode);
+		if (nematodes_count > 0 and empty(pores_nematodes)) {
+			error "[Initialisation] Aucun pore de taille >= " + (1000 * taille_min_pore_nematode / #mm)
+				+ " µm : impossible de placer les nématodes.";
+		}
+		list<float> nematode_weights <- pores_nematodes collect each.part_volume;
 		create Nematode number: nematodes_count
 		{
-			self.current_pore <- one_of(PoreParticle); 
+			self.current_pore <- pores_nematodes[rnd_choice(nematode_weights)];
 			location <- current_pore.location;
 		}
+		
+		//do diag_microbes_nematodes();
 		if (do_opti){
 			ask PoreParticle {
 				ask populations {
@@ -81,7 +97,29 @@ global {
 
 	}
 	
+	// diagnostic de l'initialisation des microbes/nema
+	action diag_microbes_nematodes() {
+		list<PoreParticle> pores <- list(PoreParticle);
+		write "[Initialisation] Microbes (biomasse totale cible " + (total_initial_bacteria_weight / #gram) + " g) :";
+		do diag_total(label: "C O", s: sum(O_Strategist collect each.C), target: init_O_rate * total_initial_bacteria_weight);
+		do diag_total(label: "C F", s: sum(F_Strategist collect each.C), target: init_F_rate * total_initial_bacteria_weight);
+		do diag_total(label: "C M", s: sum(M_Strategist collect each.C), target: init_M_rate * total_initial_bacteria_weight);
+		do diag_total(label: "Capacité de charge", s: sum(pores collect each.carrying_capacity), target: 10 * total_initial_bacteria_weight);
+		do diag_density(label: "C microbes", values: pores collect (sum(each.populations collect each.C) / (each.size ^ 3)));
+		do diag_density(label: "capacité de charge", values: pores collect (each.carrying_capacity / (each.size ^ 3)));
 
+		write "[Initialisation] Nématodes : " + length(Nematode) + " placés, taille minimale de pore = "
+			+ (1000 * taille_min_pore_nematode / #mm) + " µm. Répartition par taille de pore :";
+		list<float> sizes <- remove_duplicates(pores collect each.size) sort_by (- each);
+		loop s over: sizes {
+			list<PoreParticle> ps <- pores where (abs(each.size - s) <= 1e-9 * s);
+			int nb <- length(Nematode where (ps contains each.current_pore));
+			write "  pores de " + (s / #mm) + " mm : " + length(ps) + " pores ("
+				+ (100 * length(ps) / length(pores)) + " % des pores), "
+				+ (100 * sum(ps collect each.part_volume)) + " % du volume de pores -> "
+				+ nb + " nématodes (" + (empty(Nematode) ? 0.0 : 100 * nb / length(Nematode)) + " %)";
+		}
+	}
 
 	reflex {
 		// [Bilan de masse] Capture de l'état de référence au premier pas (sans effet ensuite).
@@ -112,10 +150,9 @@ global {
 experiment base_cammisol_output {
 	parameter "Soil size" category: "Environment" var:soil_size;
 	parameter "Nematodes count" category: "Environment" var:nematodes_count;
-	// [Voisinage] Choix du voisinage : par faces (6, multi-échelle) ou ancien Moore 3D (26), pour comparaison
+
 	parameter "Voisinage par faces (6)" category: "Environment" var:voisinage_faces;
-	//parameter "Organic particle rate" category: "Environment" var:organic_rate;
-	//parameter "Mineral particle rate" category: "Environment" var:mineral_rate;
+
 	parameter "Init C (FOM)" category: "Environment" var:C_concentration_in_pom;
 	parameter "Init N (FOM)" category: "Environment" var:N_concentration_in_pom;
 	parameter "Init P (FOM)" category: "Environment" var:P_concentration_in_pom;
@@ -125,6 +162,8 @@ experiment base_cammisol_output {
 	parameter "Nematodes CUE" category: "Nematode" var:nematode_CUE;
 	parameter "Nematodes C/N" category: "Nematode" var:nematode_C_N;
 	parameter "Nematodes C/P" category: "Nematode" var:nematode_C_P;
+	
+	parameter "Taille min. de pore (nématodes)" category: "Nematode" var:taille_min_pore_nematode; //taille minimale de pore accessible aux nématodes (0 = pas d'exclusion)
 	
 	parameter "Dividing time (O)" category: "O Strategists" var:dividing_time_O;
 	parameter "CUE (O)" category: "O Strategists" var:carbon_use_efficiency_O;

@@ -268,11 +268,20 @@ global {
 		list<particle> pore_cells <- particle where (each.my_type = PORE);
 		int pores_count <- length(pore_cells);
 
-		float C_in_each_dom <- soil_weight * C_concentration_in_dom / pores_count; // TODO Est ce que ces concentrations sont les memes a toutes les échelles ?
-		float N_in_each_dom <- soil_weight * N_concentration_in_dom / pores_count; // plutot que en count il faudrait travailler plutot en volume ?
-		float P_in_each_dom <- soil_weight * P_concentration_in_dom / pores_count;
-		float N_in_each_dim <- soil_weight * N_concentration_in_dim / pores_count;
-		float P_in_each_dim <- soil_weight * P_concentration_in_dim / pores_count;
+		// [Initialisation] chaque pore reçoit une part du contenu initial proportionnelle à son
+		// volume (part_volume), et non plus 1 / nombre de pores. Les totaux du domaine ne changent pas.
+		// TODO Est ce que ces concentrations sont les memes a toutes les échelles ?
+		float pores_total_volume <- sum(pore_cells collect (each.size ^ 3));
+		ask pore_cells {
+			ask PoreParticle(domain_particle) { part_volume <- (size ^ 3) / pores_total_volume; }
+		}
+
+		// [Initialisation] Totaux du domaine
+		float C_dom_total <- soil_weight * C_concentration_in_dom;
+		float N_dom_total <- soil_weight * N_concentration_in_dom;
+		float P_dom_total <- soil_weight * P_concentration_in_dom;
+		float N_dim_total <- soil_weight * N_concentration_in_dim;
+		float P_dim_total <- soil_weight * P_concentration_in_dim;
 
 		ask pore_cells {
 			PoreParticle pp <- PoreParticle(domain_particle);
@@ -305,43 +314,63 @@ global {
 					if (v.my_type = ORGANIC) { add OrganicParticle(v.domain_particle) to: accessible_organics; }
 				}
 
+				float w <- part_volume;   // [Initialisation] part du volume des pores
 				ask dam {
-					dom <- [N_in_each_dom, P_in_each_dom, C_in_each_dom];
-					dim <- [N_in_each_dim, P_in_each_dim];
+					dom <- [N_dom_total * w, P_dom_total * w, C_dom_total * w];
+					dim <- [N_dim_total * w, P_dim_total * w];
 				}
 			}
 		}
 
-		// [Voisinage] Diagnostic de la structure obtenue, écrit dans la console à l'initialisation.
-		// Sert à vérifier l'effet du choix de voisinage et à repérer les cas particuliers :
-		//  - pores isolés (aucun pore voisin) : un nématode qui y arrive ne peut plus en sortir ;
-		//  - pores sans organique voisin : leurs microbes ne peuvent rien décomposer ;
-		//  - organiques sans pore voisin : POM inaccessible à tous les microbes (MO « occluse »).
+		// [Voisinage] Diagnostic de la structure.
 		list<PoreParticle> all_pores <- list<PoreParticle>(pore_cells collect each.domain_particle);
 		list<OrganicParticle> reachable <- remove_duplicates(all_pores accumulate each.accessible_organics);
 		int nb_isolated_pores <- length(all_pores where (length(each.pore_neighbors) <= 1)); // seul voisin = lui-même
 		int nb_pores_without_organic <- length(all_pores where empty(each.accessible_organics));
 		int nb_unreachable_organics <- length(OrganicParticle) - length(reachable);
-		write "[Voisinage] " + (voisinage_faces ? "par faces (6, multi-échelle)" : "Moore 3D (26)") + " :";
+		/*write "[Voisinage] " + (voisinage_faces ? "par faces (6, multi-échelle)" : "Moore 3D (26)") + " :";
 		write "  pores voisins par pore (moyenne, hors lui-même) : "
 			+ (empty(all_pores) ? 0.0 : mean(all_pores collect (length(each.pore_neighbors) - 1)));
 		write "  organiques accessibles par pore (moyenne) : "
 			+ (empty(all_pores) ? 0.0 : mean(all_pores collect length(each.accessible_organics)));
 		write "  pores isolés : " + nb_isolated_pores + " / " + length(all_pores);
 		write "  pores sans organique voisin : " + nb_pores_without_organic + " / " + length(all_pores);
-		write "  organiques inaccessibles (aucun pore voisin) : " + nb_unreachable_organics + " / " + length(OrganicParticle);
+		write "  organiques inaccessibles (aucun pore voisin) : " + nb_unreachable_organics + " / " + length(OrganicParticle);*/
 
-		do init_POM(C: C_concentration_in_pom, N: N_concentration_in_pom, P: P_concentration_in_pom);
+		/* 
+		list<float> pore_sizes <- remove_duplicates(all_pores collect each.size);
+		write "[Initialisation] Pores : " + length(all_pores) + " pores, " + length(pore_sizes) + " taille(s), "
+			+ "volume de pores = " + (100 * pores_total_volume / (soil_size ^ 3)) + " % du domaine, "
+			+ "somme des part_volume = " + sum(all_pores collect each.part_volume);
+		do diag_total(label: "C DOM", s: sum(all_pores collect each.dam.dom[2]), target: C_dom_total);
+		do diag_total(label: "N DOM", s: sum(all_pores collect each.dam.dom[0]), target: N_dom_total);
+		do diag_total(label: "P DOM", s: sum(all_pores collect each.dam.dom[1]), target: P_dom_total);
+		do diag_total(label: "N DIM", s: sum(all_pores collect each.dam.dim[0]), target: N_dim_total);
+		do diag_total(label: "P DIM", s: sum(all_pores collect each.dam.dim[1]), target: P_dim_total);
+		do diag_density(label: "C DOM", values: all_pores collect (each.dam.dom[2] / (each.size ^ 3)));
+		do diag_density(label: "N DIM", values: all_pores collect (each.dam.dim[0] / (each.size ^ 3)));
+
+		do init_POM(C: C_concentration_in_pom, N: N_concentration_in_pom, P: P_concentration_in_pom);*/
+	}
+
+
+	action diag_total(string label, float s, float target) {
+		float rel <- target = 0.0 ? abs(s) : abs(s - target) / target;
+		write "  " + label + " = " + (s / #gram) + " g (cible " + (target / #gram) + " g, écart relatif " + rel + ")";
+	}
+
+	// [Initialisation] Rapport max/min d'une densité (quantité / volume) entre cellules : 1 = parfaitement uniforme.
+	action diag_density(string label, list<float> values) {
+		float ratio <- (empty(values) or min(values) <= 0.0) ? -1.0 : max(values) / min(values);
+		write "  densité " + label + " max / min entre pores = " + ratio;
 	}
 
 	/**
-	 * [Initialisation] Étape A1 : répartition de la POM initiale au prorata du VOLUME des cellules organiques.
+	 * [Initialisation] répartition de la POM initiale au prorata du VOLUME des cellules organiques.
 	 * C, N, P : concentrations par masse de sol sec (g/g, Tableau 1 de l'ODD).
 	 *  - total du domaine : X_tot = X x soil_weight (indépendant du canevas et du nombre de niveaux) ;
 	 *  - chaque organique reçoit X_tot x size^3 / somme des size^3 : la densité (g/m3) est donc la même
-	 *    dans toutes les cellules organiques, quelle que soit leur taille.
-	 * Avant A1, chaque organique recevait X x (soil_size/division)^3, quelle que soit sa taille réelle,
-	 * ce qui surestimait fortement la POM en multi-niveau (x5 sur grid2 à 2 niveaux).
+	 *    dans toutes les cellules organiques, quelle que soit leur taille.  //TODO a verifier
 	 */
 	action init_POM(float C, float N, float P) {
 		write "Soil C (pom): " + C / (#gram / #kg) + " g/kg de sol";
@@ -370,21 +399,21 @@ global {
 			P_recalcitrant <- (1 - labile_rate_pom) * P_total * w;
 		}
 
-		// [Initialisation] Diagnostic / test A1, écrit dans la console :
-		//  1. somme des organiques = cible (écart relatif attendu < 1e-12) ;
-		//  2. densité C / volume identique dans toutes les cellules (rapport max/min attendu = 1).
+		// [Initialisation]
+		//  somme des organiques = cible (écart relatif attendu < 1e-12) ;
+		//  densité C / volume identique dans toutes les cellules (rapport max/min attendu = 1).
 		float C_sum <- sum(organics collect (each.C_labile + each.C_recalcitrant));
 		float N_sum <- sum(organics collect (each.N_labile + each.N_recalcitrant));
 		float P_sum <- sum(organics collect (each.P_labile + each.P_recalcitrant));
 		list<float> densities <- organics collect ((each.C_labile + each.C_recalcitrant) / (each.size ^ 3));
 		list<float> sizes <- remove_duplicates(organics collect each.size);
-		write "[Initialisation] POM : " + length(organics) + " organiques, " + length(sizes) + " taille(s), "
+		/*write "[Initialisation] POM : " + length(organics) + " organiques, " + length(sizes) + " taille(s), "
 			+ "volume organique = " + (100 * total_volume / (soil_size ^ 3)) + " % du domaine";
 		write "  masse de sol = " + (soil_weight / #kg) + " kg";
 		write "  C POM = " + (C_sum / #gram) + " g (cible " + (C_total / #gram) + " g, écart relatif " + (abs(C_sum - C_total) / C_total) + ")";
 		write "  N POM = " + (N_sum / #gram) + " g (cible " + (N_total / #gram) + " g, écart relatif " + (abs(N_sum - N_total) / N_total) + ")";
 		write "  P POM = " + (P_sum / #gram) + " g (cible " + (P_total / #gram) + " g, écart relatif " + (abs(P_sum - P_total) / P_total) + ")";
-		write "  densité C max / min entre organiques = " + (max(densities) / min(densities));
+		write "  densité C max / min entre organiques = " + (max(densities) / min(densities));*/
 	}
 }
 

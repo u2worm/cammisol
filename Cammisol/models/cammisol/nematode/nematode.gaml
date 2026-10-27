@@ -18,6 +18,9 @@ global {
 	float nematode_CUE <- 0.16;
 	float nematode_sleep_threshold <- 0.1;
 	float nematode_rejected_microbe_necromass_rate <- 0.5;
+	// [Initialisation] : taille (côté) minimale d'un pore accessible aux nématodes,
+	// pour le placement initial ET les déplacements. 0 = aucune exclusion.
+	float taille_min_pore_nematode <- 0.0 #m;
 }
 
 species Nematode schedules:[]
@@ -58,7 +61,8 @@ species Nematode schedules:[]
 	
 	action move()
 	{
-		list<PoreParticle> neighbors_pores <- current_pore.pore_neighbors;
+		// : un nématode n'entre pas dans un pore plus petit que taille_min_pore_nematode
+		list<PoreParticle> neighbors_pores <- current_pore.pore_neighbors where (each.size >= taille_min_pore_nematode);
 		
 		//write "pore courant" + current_pore + ": x: " + current_pore.grid_x + ", y: " + current_pore.grid_y + ", z:" + current_pore.grid_z;
 		

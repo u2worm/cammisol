@@ -40,6 +40,8 @@ species PoreParticle schedules:[] {
 	int grid_z;
 	float size;
 	float carrying_capacity;
+
+	float part_volume; // la part du volume total des pores portée par ce pore, caclulé dans init_grid.
 	
 	
 	
