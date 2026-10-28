@@ -54,10 +54,7 @@ global {
 
 	// TODO Est ce que ces concentrations sont les memes a toutes les échelles ?
 
-	// [Initialisation] Concentrations de la POM PAR MASSE DE SOL SEC (g / g de sol), comme le Tableau 1
-	// de l'ODD (sol noir : 22.46 g C, 1.37 g N, 0.700 g P par kg de sol). Le total de POM du domaine vaut
-	// concentration x soil_weight, réparti ensuite entre les organiques au prorata de leur volume (init_POM).
-	// (Avant l'étape A1 : mêmes chiffres mais en g/cm3, appliqués au seul volume des cellules organiques.)
+	// [Initialisation] POM par masse de sol sec (g/g), ODD Tab. 1 (sol noir). Total = conc. x soil_weight.
 	float C_concentration_in_pom <- 0.02246 #gram / #gram;
 	float N_concentration_in_pom <- 0.00137 #gram / #gram;
 	float P_concentration_in_pom <- 0.00070 #gram / #gram;

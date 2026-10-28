@@ -316,9 +316,10 @@ experiment base_cammisol_output {
 }
 
 experiment test_microbes parent:base_cammisol_output {
-	float C_soil <- 1#gram/(#cm#cm);
-	float N_soil <- 0.1#gram/(#cm#cm);
-	float P_soil <- 0.05#gram/(#cm#cm);
+	// [Initialisation] Concentrations par masse de sol sec (g/g), comme init_POM. Défaut : ODD Tab. 1 (sol noir).
+	float C_soil <- 0.02246 #gram / #gram;
+	float N_soil <- 0.00137 #gram / #gram;
+	float P_soil <- 0.00070 #gram / #gram;
 	
 	//parameter "Grid size" var:grid_size;
 	parameter "Nematodes" var:nematodes_count;
