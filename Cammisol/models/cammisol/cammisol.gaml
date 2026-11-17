@@ -241,7 +241,7 @@ experiment base_cammisol_output {
 				data "P dim (g)" value: sum(Dam collect each.dim[1])/#gram style:spline marker:false thickness:3;
 			}
 		}
-		/* 
+		 
 		display "organics_labile" type:java2D {
 			chart "Organics labile" type:series {
 				data "C labile (g)" value: sum(OrganicParticle collect each.C_labile)/#gram style:spline marker:false thickness:3;
@@ -258,7 +258,7 @@ experiment base_cammisol_output {
 			}
 		}
 		
-		*/
+		
 		display "populations" type:java2D {
 			chart "Bacteria populations" type:series {
 				data "O (g)" value: sum(O_Strategist collect each.C)/#gram style:spline color: #red marker:false thickness:3;
@@ -280,7 +280,7 @@ experiment base_cammisol_output {
 
 		// [Bilan de masse] Répartition du C entre compartiments (où se trouve la matière).
 		// La somme POM + DOM + microbes + nématodes + CO2 doit rester égale à C initial + entrées.
-		display "Bilan de masse - répartition du C" type: java2D {
+		/*display "Bilan de masse - répartition du C" type: java2D {
 			chart "Répartition du C (g)" type: series {
 				data "POM" value: mb_C_pom / #gram style: line color: #green marker: false thickness: 2;
 				data "DOM" value: mb_C_dom / #gram style: line color: #blue marker: false thickness: 2;
@@ -311,7 +311,7 @@ experiment base_cammisol_output {
 				data "MAM" value: mb_N_mam / #gram style: line color: #gray marker: false thickness: 2;
 				data "N initial + entrées" value: (mb_N_ref + mb_N_input) / #gram style: line color: #black marker: false thickness: 1;
 			}
-		}
+		}*/
 	}
 }
 

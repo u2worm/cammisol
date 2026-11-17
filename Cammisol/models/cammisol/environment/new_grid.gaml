@@ -64,7 +64,7 @@ global {
 	float P_concentration_in_dom <- (400.0 * 10 ^ -6) #gram / #gram;
 
 	float N_concentration_in_dim <- (10.1 * 10 ^ -6) #gram / #gram;
-	float P_concentration_in_dim <- (10.1 * 10 ^ -6) #gram / #gram;
+	float P_concentration_in_dim <- (1.19 * 10 ^ -6) #gram / #gram;
 
 	float labile_rate_pom <- 0.2;
 
@@ -85,7 +85,7 @@ global {
 		//do init_grid();          // câble le domaine CAMMISOL sur les agents 'particle' créés ci-dessus
 	}*/
 
-	// ============================================================ // Lecture du fichier // ============================================================	
+	// ============================================================ // Lecture du fichier // ============================================================
 	
 	action load_soil_file() {
 	    json_file f <- json_file(soil_file);
@@ -345,9 +345,9 @@ global {
 		do diag_total(label: "N DIM", s: sum(all_pores collect each.dam.dim[0]), target: N_dim_total);
 		do diag_total(label: "P DIM", s: sum(all_pores collect each.dam.dim[1]), target: P_dim_total);
 		do diag_density(label: "C DOM", values: all_pores collect (each.dam.dom[2] / (each.size ^ 3)));
-		do diag_density(label: "N DIM", values: all_pores collect (each.dam.dim[0] / (each.size ^ 3)));
+		do diag_density(label: "N DIM", values: all_pores collect (each.dam.dim[0] / (each.size ^ 3)));*/
 
-		do init_POM(C: C_concentration_in_pom, N: N_concentration_in_pom, P: P_concentration_in_pom);*/
+		do init_POM(C: C_concentration_in_pom, N: N_concentration_in_pom, P: P_concentration_in_pom);
 	}
 
 
