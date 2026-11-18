@@ -122,7 +122,8 @@ species PoreParticle schedules:[] {
 		float total_microbes_C <- sum(populations collect each.C);
 		
 		ask shuffle(populations) {
-			float perceived_rate <- C / total_microbes_C;
+			// Sécurité division par 0 : pore sans biomasse structurale -> aucune perception
+			float perceived_rate <- total_microbes_C > 0.0 ? C / total_microbes_C : 0.0;
 			do life(
 				myself.dam, perceived_rate, sum(myself.populations collect each.C), myself.carrying_capacity
 			);

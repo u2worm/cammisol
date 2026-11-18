@@ -13,7 +13,7 @@ import "../microbes/microbes.gaml"
 
 global {
 	float nematode_CO2_emissions <- 0.0#gram;                     // CO2 cumulé émis par tous les nématodes
-	float nematode_predation_rate <- 1e5 * 1e-12 #gram/#day;      // C prédaté par nématode : ~100k bactéries (1e-12 g) par jour
+	float nematode_predation_rate <- 3.0e-4 #gram/#day;      // C prédaté par nématode : ~100k bactéries (1e-12 g) par jour
 	float nematode_C_N <- 6.0;                                    // rapport C:N de la biomasse des nématodes
 	float nematode_C_P <- 47.0;                                   // rapport C:P de la biomasse des nématodes
 	float nematode_CUE <- 0.16;                                   // part du C de l'estomac conservée ; le reste est respiré
@@ -99,8 +99,8 @@ species Nematode schedules:[]
 			if (total_C_predated_from_this_population > 0.0) {
 				// Part prise sur la biomasse structurale (N et P au rapport de la biomasse)
 				float C_predated_from_structural <- C/(C+cytosol_C) * total_C_predated_from_this_population;
-				float N_predated_from_structural <- C_predated_from_structural * N/C;
-				float P_predated_from_structural <- C_predated_from_structural * P/C;
+				float N_predated_from_structural <- C > 0.0 ? C_predated_from_structural * N/C : 0.0;   // sécurité division par 0
+				float P_predated_from_structural <- C > 0.0 ? C_predated_from_structural * P/C : 0.0;
 							
 				C <- C - C_predated_from_structural;
 				N <- N - N_predated_from_structural;

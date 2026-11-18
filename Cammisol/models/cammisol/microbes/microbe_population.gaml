@@ -214,6 +214,8 @@ species MicrobePopulation schedules:[]
 	 * Updates active rate according to perceived nutrients.
 	 */
 	action sleep(Dam dam, float perceived_rate) {
+		// Sécurité division par 0 : population éteinte (C = 0), la fraction active n'est pas recalculée
+		if (C <= 0.0) { return; }
 		float usable_C <- perceived_rate * dam.dom[2]+cytosol_C; //Carbon from the dom + cytosol
 		float C_usable_for_respiration <- (1-carbon_use_efficiency) * usable_C;
 		
@@ -231,8 +233,11 @@ species MicrobePopulation schedules:[]
 			min(1.0, (C_usable_for_respiration + C_usable_for_growth) / (C * local_step / (carbon_use_efficiency * dividing_time)))
 			);
 		
-		float d_active_population <- 1/(active_rate > active_population_target ? sporulation_time : germination_time)
-			* active_population_target * (1 - active_rate / active_population_target);
+		// Sécurité division par 0 : cible nulle possible seulement si minimum_active_rate = 0
+		float d_active_population <- active_population_target > 0.0
+			? 1/(active_rate > active_population_target ? sporulation_time : germination_time)
+				* active_population_target * (1 - active_rate / active_population_target)
+			: - active_rate / sporulation_time;
 
 		// The minimum awake rate prevents awake_population to be set to 0.0, what would prevent it to awake (see d_awake_population equation above)
 		active_rate <- min(1.0, max(minimum_active_rate, active_rate + d_active_population * local_step));

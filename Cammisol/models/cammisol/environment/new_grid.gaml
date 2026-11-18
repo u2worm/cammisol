@@ -59,12 +59,12 @@ global {
 	float N_concentration_in_pom <- 0.00137 #gram / #gram;
 	float P_concentration_in_pom <- 0.00070 #gram / #gram;
 
-	float C_concentration_in_dom <- (729.0 * 10 ^ -6) #gram / #gram;
-	float N_concentration_in_dom <- (60.0 * 10 ^ -6) #gram / #gram;
-	float P_concentration_in_dom <- (400.0 * 10 ^ -6) #gram / #gram;
+	float C_concentration_in_dom <- (72.0 * 10 ^ -6) #gram / #gram;
+	float N_concentration_in_dom <- (6.00 * 10 ^ -6) #gram / #gram;
+	float P_concentration_in_dom <- (40.0 * 10 ^ -6) #gram / #gram;
 
-	float N_concentration_in_dim <- (10.1 * 10 ^ -6) #gram / #gram;
-	float P_concentration_in_dim <- (1.19 * 10 ^ -6) #gram / #gram;
+	float N_concentration_in_dim <- (1.01 * 10 ^ -6) #gram / #gram;
+	float P_concentration_in_dim <- (0.119 * 10 ^ -6) #gram / #gram;
 
 	float labile_rate_pom <- 0.2;
 
