@@ -22,6 +22,7 @@ global {
 	int bench_periode <- 12;                       // pas entre deux lignes sur les csv
 	string bench_dossier <- "../../../bench_results/";
 	bool bench_pause_fin <- true;                  // pause à la fin (interface) ; false en batch
+	string bench_etiquette <- "";                  // ajoutée au nom des fichiers (ex. scénario), vide par défaut
 
 	// [Bench] État interne
 	bool bench_pret <- false;
@@ -53,7 +54,7 @@ global {
 		bench_apres_pas <- mb_reference_captured;
 		bench_canevas <- replace(last(soil_file split_with "/"), ".json", "");
 		bench_graine <- replace(string(seed), ".", "");
-		bench_prefixe <- bench_canevas + "_n" + niveaux + "_s" + bench_graine;
+		bench_prefixe <- bench_canevas + "_n" + niveaux + (bench_etiquette = "" ? "" : "_" + bench_etiquette) + "_s" + bench_graine;
 
 		// Classes de taille (la structure ne change pas pendant la simulation)
 		list<PoreParticle> pores <- list(PoreParticle);
