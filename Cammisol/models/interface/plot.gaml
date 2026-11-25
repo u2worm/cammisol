@@ -11,21 +11,21 @@ model plot
 import "button.gaml"
 
 //import "mock_camisol_adapter.gaml" as Camisol
-import "camisol_adapter.gaml" as Camisol
+import "cammisol_adapter.gaml" as Camisol
 
 /**
  * Defines the Plot features that allow a parcel to be planted and fertilized.
  */
  
 global {
-	float epoch_duration <- 6#month;
-//	float epoch_duration <- 100#h; // For interface test purpose only
+//	float epoch_duration <- 6#month;
+	float epoch_duration <- 100#h; // For interface test purpose only
 
 	date output_time <- #now;
 	string output_file_suffix <- "" + output_time.year + "" +output_time.month + "" + output_time.day + "" + output_time.hour + "" + output_time.minute;
 	float fertilizer_icon_sep <- 0.8*cell_size;
 	
-	action init_plots {
+	action init_plots() {
 		// Factors to convert coordinates within the SVG file in world coordinates in meters
 		float SVG_to_world_x <- env_width/582.850;
 		float SVG_to_world_y <- env_height/330.320;
@@ -255,7 +255,7 @@ global {
 			current_plot_focus.selected <- true;
 		}
 	}
-	action leave_plot {
+	action leave_plot() {
 		if (current_plot_focus != nil) {
 			current_plot_focus.selected <- false;
 			current_plot_focus <- nil;
@@ -264,12 +264,12 @@ global {
 		}
 	}
 	
-	bool mouse_hover_plots {
+	bool mouse_hover_plots() {
 		bool new_plot_under_focus <- false;
 		list<PlotView> plots_under_mouse <- PlotView overlapping #user_location;
 		// No plot under focus or same plot
 		if length(plots_under_mouse) = 0 or plots_under_mouse[0] != current_plot_focus {
-			do leave_plot;
+			do leave_plot();
 		}
 		// New plot under focus case
 		if length(plots_under_mouse) > 0 and plots_under_mouse[0] != current_plot_focus {
@@ -278,20 +278,20 @@ global {
 		}
 		return new_plot_under_focus;
 	}
-	action mouse_move_plots {
+	action mouse_move_plots() {
 		bool new_plot_under_focus <- mouse_hover_plots();
 		if(!move_on_current_plot_focus) {
 			move_on_current_plot_focus <- new_plot_under_focus;
 		}
 	}
-	action mouse_drag_plots {
+	action mouse_drag_plots() {
 		bool new_plot_under_focus <- mouse_hover_plots();
 		if(!drag_on_current_plot_focus) {
 			drag_on_current_plot_focus <- new_plot_under_focus;
 		}
 	}
 	
-	action put_selected_item_on_plot {
+	action put_selected_item_on_plot() {
 		current_plot_focus.selected <- false;
 		if selected_seed != nil {
 			// Only if the plot is not grown yet
@@ -303,7 +303,7 @@ global {
 				write "Seed " + selected_seed.seed.type + " planted to " + current_plot_focus.plot.number;
 			}
 			ask selected_seed {
-				do die;
+				do die();
 			}
 			selected_seed <- nil;
 		}
@@ -317,7 +317,7 @@ global {
 				}
 			}
 			ask selected_fertilizer {
-				do die;
+				do die();
 			}
 			selected_fertilizer <- nil;
 		}
@@ -325,30 +325,30 @@ global {
 			current_plot_focus.plot.soil <- selected_soil.soil;
 			write "Soil of plot " + current_plot_focus.plot.number + " set to " + selected_soil.soil.color;
 			ask selected_soil {
-				do die;
+				do die();
 			}
 			selected_soil <- nil;
 		}
 	}
 	
-	action mouse_down_plots {
+	action mouse_down_plots() {
 		if current_plot_focus != nil and move_on_current_plot_focus {
-			do put_selected_item_on_plot;
+			do put_selected_item_on_plot();
 		}
 	}
 	
-	action mouse_up_plots {
+	action mouse_up_plots() {
 		if current_plot_focus != nil and drag_on_current_plot_focus {
-			do put_selected_item_on_plot;
+			do put_selected_item_on_plot();
 		}
 	}
 }
-
+// ==========================================================================================================
 species EndThreadCallback {
-	action call virtual: true;
+	action call() virtual: true;
 }
 
-
+// ==========================================================================================================
 species CsvOutput {
 	int time;
 	int plot_surface;
@@ -366,6 +366,8 @@ species CsvOutput {
 /**
  * A parcel that can be planted and fertilized.
  */
+ 
+// ==========================================================================================================
 species Plot skills: [thread] {
 	EndThreadCallback end_thread_callback;
 	
@@ -413,12 +415,12 @@ species Plot skills: [thread] {
 		seed<-seed_to_plant;
 		growth_state<-1;
 	}
-	action remove_plant {
+	action remove_plant() {
 		seed <- nil;
 		growth_state<-0;
 	}
 	
-	action thread_action {
+	action thread_action() {
 		camisol_running <- true;
 		Plot current_plot <- self;
 		float harvest;
@@ -451,7 +453,7 @@ species Plot skills: [thread] {
 				int max_step <- int(epoch_duration/local_step);
 				write "[Camisol] Starting camisol simulation on plot " + current_plot.number + " for " + max_step + " steps.";
 				loop i from: 1 to: max_step {
-					do _step_;
+					do _step_();
 					ask current_plot {
 						progress <- int(100 * i / max_step);
 						if(seed != nil) {
@@ -501,7 +503,7 @@ species Plot skills: [thread] {
 			fertilizer_6: length(self.fertilizers) > 5 ? self.fertilizers[5].name : "",
 			quantity: harvest
 		) {
-			save [time, plot_surface, soil, seed, fertilizer_1, fertilizer_2, fertilizer_3, fertilizer_4, fertilizer_5, fertilizer_6, quantity] to: myself.output_file format:csv header:true rewrite: false;
+			save [time, plot_surface, soil, seed, fertilizer_1, fertilizer_2, fertilizer_3, fertilizer_4, fertilizer_5, fertilizer_6, quantity] to: myself.output_file format:"csv" header:true rewrite: false;
 		}
 		
 		camisol_running <- false;
@@ -509,11 +511,13 @@ species Plot skills: [thread] {
 		if(end_thread_callback != nil) {
 			// Only called from one plot, that waits until all other plots have finished
 			ask end_thread_callback {
-				do call;
+				do call();
 			}			
 		}
 	}
 }
+
+// ==========================================================================================================
 
 
 species FertilizerHandfulButton parent: Button {
@@ -521,25 +525,25 @@ species FertilizerHandfulButton parent: Button {
 	int index;
 	bool hidden <- false;
 	
-	action mouse_enter {
+	action mouse_enter() {
 		
 	}
-	action mouse_leave {
+	action mouse_leave() {
 		
 	}
-	agent click {
+	action click(){
 		ask plot_view {
 			do remove_fertilizer(myself);
 		}
 		return nil;
 	}
-	action post_click {
+	action post_click() {
 	}
 	
-	action hide {
+	action hide() {
 		hidden <- true;
 	}
-	action show {
+	action show() {
 		hidden <- false;
 	}
 	aspect default {
@@ -549,29 +553,32 @@ species FertilizerHandfulButton parent: Button {
 	}
 }
 
+
+// ==========================================================================================================
+
 species PlotCropButton parent: Button {
 	PlotView plot_view;
 	bool hidden <- false;
 	
-	action mouse_enter {
+	action mouse_enter() {
 		
 	}
-	action mouse_leave {
+	action mouse_leave() {
 		
 	}
-	agent click {
+	action click() {
 		ask plot_view {
 			do remove_crop(myself);
 		}
 		return nil;
 	}
-	action post_click {
+	action post_click() {
 	}
 	
-	action hide {
+	action hide() {
 		hidden <- true;
 	}
-	action show {
+	action show() {
 		hidden <- false;
 	}
 	aspect default {
@@ -583,7 +590,9 @@ species PlotCropButton parent: Button {
 	
 /**
  * Adaptor used to visualise a Plot.
+ * 
  */
+// ==========================================================================================================
 species PlotView {
 	/**
 	 * Visualised plot.
@@ -655,10 +664,10 @@ species PlotView {
 		write "Crop " + plot.seed.type + " removed from plot " + plot.number;
 		plot_crop_button <- nil;
 		ask plot {
-			do remove_plant;
+			do remove_plant();
 		}
 		ask crop_button {
-			do die;
+			do die();
 		}
 	}
 	
@@ -696,10 +705,10 @@ species PlotView {
 			i <- i+1;
 		}
 		ask handful {
-			do die;
+			do die();
 		}
 		ask world {
-			do mouse_move_buttons;
+			do mouse_move_buttons();
 		}
 		if length(plot.fertilizers) = 0 {
 			button_box_width <- 0.0;
@@ -746,9 +755,14 @@ species PlotView {
 	}
 }
 
+
+// =================================================
+// experiment
+// =================================================
+
 experiment debug_plots type:gui {
 	
-	action _init_ {
+	action _init_() {
 		create simulation;
 		ask simulation {
 			do init_soils();
@@ -777,15 +791,15 @@ experiment debug_plots type:gui {
 					selected_seed <- new_seed_view[0];
 				} else {
 					ask selected_seed {
-						do die;
+						do die();
 					}
 					selected_seed <- nil;
 				}
 			}
-			event #mouse_move { ask simulation {do mouse_move_plots;}}
-			event #mouse_drag { ask simulation {do mouse_drag_plots;}}
-			event #mouse_down { ask simulation {do mouse_down_plots;}}
-			event #mouse_up { ask simulation {do mouse_up_plots;}}
+			event #mouse_move { ask simulation {do mouse_move_plots();}}
+			event #mouse_drag { ask simulation {do mouse_drag_plots();}}
+			event #mouse_down { ask simulation {do mouse_down_plots();}}
+			event #mouse_up { ask simulation {do mouse_up_plots();}}
 			
 			// image "plots" position: {0, 0, 0} size: {1, 1} file: plots;
 			species PlotView aspect:default;

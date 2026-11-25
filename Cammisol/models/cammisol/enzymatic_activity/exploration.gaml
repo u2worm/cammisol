@@ -179,7 +179,7 @@ global {
 	}
 }
 
-species ExplorationParameterGetter {
+species ExplorationParameterGetter { // ??
 	float param_value virtual:true;
 }
 
@@ -282,7 +282,7 @@ experiment Explore {
 	parameter "C/N DOM" var:exp_CN_dom init:10.0 read_only:true;
 	parameter "C/P DOM" var:exp_CP_dom init:17.0 read_only:true;
 	
-	action write_config_csv {
+	action write_config_csv() {
 		list<string> header <- [
 			"Period (days)",
 			"Labile C (g)",
@@ -360,7 +360,7 @@ experiment Explore {
 	/**
 	 * Initialise CSV headers.
 	 */
-	action init_data_csv {
+	action init_data_csv() {
 		list<string> header <- ["n", x_label()];
 		loop strategy over: ["O", "F", "M"] {
 			header <- header + [

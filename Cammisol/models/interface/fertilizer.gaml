@@ -31,7 +31,7 @@ global {
 	// Note: the regular init function is not used, since the controller model
 	// needs the fertilizers but "import fertilizer.gaml" in controller.gaml causes the
 	// fertilizer init to be called AFTER the controller init.
-	action init_fertilizers {
+	action init_fertilizers() {
 		write "Building available fertilizers...";
 		// Initializes all the available fertilizers
 		// Organic fertilizers
@@ -85,7 +85,7 @@ species Fertilizer {
 	float C_P <- 0.0;
 	float sample_dose <- 0.0;
 	
-	string to_string {
+	string to_string() {
 		return "Fertilizer(" + name + ")";
 	}
 }

@@ -33,12 +33,12 @@ global {
 	list<species<Button>> handled_buttons <- [SoilButton, SeedButton, SeedButtonMenu, FertilizerButton, FertilizerButtonMenu, EpochButton, RunButton];
 
 	init {
-		do load_csv_data;
-		do init_seeds;
-		do init_fertilizers;
-		do init_soils;
-		do init_plots;
-		do init_calendar;
+		do load_csv_data();
+		do init_seeds();
+		do init_fertilizers();
+		do init_soils();
+		do init_plots();
+		do init_calendar();
 		
 		write "Building buttons...";
 		int i <- 0;
@@ -57,17 +57,17 @@ global {
 		
 		ask SeedButtonMenu {
 			// Shows the seed button at initialization
-			do show_buttons;
+			do show_buttons();
 		}
 		ask FertilizerButtonMenu {
 			// Hide fertilizer button background
-			do deactivate;
+			do deactivate();
 		}
 		
 		create EpochsMenu;
 	}
 	
-	action mouse_down_harvest {
+	action mouse_down_harvest() {
 		if mode = HARVEST {
 			if(current_plot_focus != nil) {
 				ask current_plot_focus {
@@ -84,10 +84,10 @@ global {
 					self.plot.fertilizers <- [];
 					self.fertilizers_button_box.hidden_envelope <- nil;
 					ask fertilizer_handful_buttons {
-						do die;
+						do die();
 					}
 					ask plot_crop_button {
-						do die;
+						do die();
 					}
 				}
 				int global_growth <- 0;
@@ -97,12 +97,12 @@ global {
 				if(global_growth = 0) {
 					// All plots are harvested
 					ask RunButton {
-						do go_to_next_epoch;
+						do go_to_next_epoch();
 					}
 					ask EpochButton {
 						// Re-enables only EpochButtons.
 						// Other buttons will be re-enabled when the current epoch is selected.
-						do enable;
+						do enable();
 					}
 					mode <- NORMAL;
 				}
@@ -110,20 +110,22 @@ global {
 		}
 	}
 }
-
+// ==========================================================================
+// ==========================================================================
+// ==========================================================================
 /**
  * Button used for soil selection.
  */
 species SoilButton parent: Button {
 	SoilView soil_view;
 	
-	action mouse_enter {
+	action mouse_enter() {
 		soil_view.icon_size <- 0.9*cell_size;
 	}
-	action mouse_leave {
+	action mouse_leave() {
 		soil_view.icon_size <- 0.8*cell_size;
 	}
-	agent click {
+	action click() {
 		if selected_item = nil {
 			// Creates a new SoilView bound to the the same Soil as the button
 			create SoilView number:1 returns:new_soil_icon with:(
@@ -137,15 +139,17 @@ species SoilButton parent: Button {
 		return selected_soil;
 	}
 	
-	action post_click {
+	action post_click() {
 		if current_plot_focus = nil {
 			ask selected_soil {
-				do die;
+				do die();
 			}
 			selected_soil <- nil;		
 		}
 	}
 }
+
+// ==========================================================================
 
 /**
  * Seed selection button.
@@ -153,13 +157,13 @@ species SoilButton parent: Button {
 species SeedButton parent: Button {
 	SeedView seed_view;
 	
-	action mouse_enter {
+	action mouse_enter() {
 		seed_view.icon_size <- 0.9*cell_size;
 	}
-	action mouse_leave {
+	action mouse_leave() {
 		seed_view.icon_size <- 0.8*cell_size;
 	}
-	agent click {
+	action click() {
 		if selected_item = nil {
 			// Creates a new SeedView bound to the the same Seed as the button
 			create SeedView number:1 returns:new_seed_view with:(seed:self.seed_view.seed,icon_size:0.8*cell_size,location:#user_location);
@@ -168,29 +172,31 @@ species SeedButton parent: Button {
 		}
 		return selected_seed;
 	}
-	action post_click {
+	action post_click() {
 		if current_plot_focus = nil {
 			ask selected_seed {
-				do die;
+				do die();
 			}
 			selected_seed <- nil;
 		}
 	}
 }
 
+
+// ==========================================================================
 /**
  * Fertilizer selection button
  */
 species FertilizerButton parent: Button {
 	FertilizerView fertilizer_view;
 	
-	action mouse_enter {
+	action mouse_enter() {
 		fertilizer_view.icon_size <- 0.9*cell_size;
 	}
-	action mouse_leave {
+	action mouse_leave() {
 		fertilizer_view.icon_size <- 0.8*cell_size;
 	}
-	agent click {
+	action click() {
 		if selected_item = nil {
 			// Creates a new FertilizerView bound to the the same Fertilizer as the button
 			create FertilizerView number:1 returns:new_fertilizer_view with:(
@@ -203,62 +209,63 @@ species FertilizerButton parent: Button {
 		}
 		return selected_fertilizer;
 	}
-	action post_click {
+	action post_click() {
 		if current_plot_focus = nil {
 			ask selected_fertilizer {
-				do die;
+				do die();
 			}
 			selected_fertilizer <- nil;
 		}
 	}
 }
 
+// ==========================================================================
 /**
  * Epoch selection button. Only passed epochs can be selected.
  */
 species EpochButton parent: Button {
 	EpochView epoch_view;
 	
-	action mouse_enter {
+	action mouse_enter() {
 		if(selected_epoch != epoch_view) {
 			epoch_view.icon_size <- 1.1*button_size;
 		}
 	}
-	action mouse_leave {
+	action mouse_leave() {
 		if(selected_epoch != epoch_view) {
 			epoch_view.icon_size <- button_size;
 		}
 	}
-	agent click {
+	action click() {
 		if(selected_epoch != epoch_view) {
 			epoch_view.icon_size <- button_size;
 			selected_epoch <- epoch_view;
 
 			if(selected_epoch.epoch.time != current_time) {
 
-				do display_harvest;
+				do display_harvest();
 			} else {
 				ask HarvestView {
 					// Clears all current harvest view, if any
-					do die;
+					do die();
 				}
 				ask FertilizerHandfulButton + PlotCropButton + SeedButton + FertilizerButton {
-					do enable;
+					do enable();
 				}
 				ask FertilizerHandfulButton {
-					do show;
+					do show();
 				}
 				ask PlotCropButton {
-					do show;
+					do show();
 				}
 				if(current_time = 0) {
 					ask SoilButton {
-						do enable;
+						do enable();
 					}
 				}
 				if(current_time < 6) {
 					ask RunButton {
-						do enable;
+						do enable();
 					}
 				}
 			}
@@ -266,21 +273,21 @@ species EpochButton parent: Button {
 		return nil;
 	}
 	
-	action display_harvest {
+	action display_harvest() {
 		ask FertilizerHandfulButton + PlotCropButton + SeedButton + FertilizerButton + SoilButton + RunButton {
-			do disable;
+			do disable();
 		}
 		ask FertilizerHandfulButton {
 			// Hides the current fertilizers
-			do hide;
+			do hide();
 		}
 		ask PlotCropButton {
 			// Hides the current crop
-			do hide;
+			do hide();
 		}
 		ask HarvestView {
 			// Clears all current harvest view, if any
-			do die;
+			do die();
 		}
 		ask PlotView {
 			create HarvestView with: (
@@ -291,15 +298,17 @@ species EpochButton parent: Button {
 			);
 		}
 	}
-	action post_click {
+	action post_click() {
 		// Nothing to do
 	}
 }
 
+// ==========================================================================
+
 species PlotEndThreadCallback parent: EndThreadCallback {
 	RunButton run_button;
 	
-	action call {
+	action call() {
 		// True if at least one plot is still running Camisol
 		bool camisol_running_on_plot <- true;
 		loop while: camisol_running_on_plot {
@@ -309,10 +318,13 @@ species PlotEndThreadCallback parent: EndThreadCallback {
 			}
 		}
 		ask run_button {
-			do end_simulation;
+			do end_simulation();
 		}
 	}
 }
+
+// ==========================================================================
+
 species RunButton parent: Button {
 	PlotEndThreadCallback plot_end_thread_callback;
 	
@@ -332,14 +344,14 @@ species RunButton parent: Button {
 			end_thread_callback <- myself.plot_end_thread_callback;
 		}
 	}
-	action mouse_enter {
+	action mouse_enter() {
 		icon_size <- 1.1*button_size;
 	}
-	action mouse_leave {
+	action mouse_leave() {
 		icon_size <- button_size;
 	}
 	
-	action launch_simulation {
+	action launch_simulation() {
 		running <- true;
 		init_cycle <- cycle; // Application cycle (not camisol cycle)
 		// Runs the current epoch
@@ -347,15 +359,15 @@ species RunButton parent: Button {
 		
 		ask FertilizerHandfulButton + SeedButton + FertilizerButton + SoilButton + EpochButton + RunButton {
 			// Disables all buttons while the Camisol simulations are running
-			do disable;
+			do disable();
 		}
 
 		ask Plot {
-			do run_thread;
+			do run_thread();
 		}
 	}
 
-	action end_simulation {
+	action end_simulation() {
 		int global_growth <- 0;
 		ask PlotView {
 			global_growth <- global_growth + plot.growth_state;
@@ -370,19 +382,19 @@ species RunButton parent: Button {
 				self.plot.fertilizers <- [];
 				self.fertilizers_button_box.hidden_envelope <- nil;
 				ask fertilizer_handful_buttons {
-					do die;
+					do die();
 				}
 			}
 		}
 		if(global_growth = 0) {
 			// No harvest to do, all plots were empty
 			ask RunButton {
-				do go_to_next_epoch;
+				do go_to_next_epoch();
 			}
 			ask EpochButton {
 				// Re-enables only EpochButtons.
 				// Other buttons will be re-enabled when the current epoch is selected.
-				do enable;
+				do enable();
 			}
 			mode <- NORMAL;
 		} else {
@@ -392,14 +404,14 @@ species RunButton parent: Button {
 		write "[Camisol] Simulation duration: " + int((cycle-init_cycle)*interface_minimum_cycle_duration/#mn) + " minutes.";
 	}
 	
-	action go_to_next_epoch {
+	action go_to_next_epoch() {
 		if current_time = 0 {
 			// Soil can only be set at the first epoch
 			ask SoilButton {
-				do die;
+				do die();
 			}
 			ask SoilView {
-				do die;
+				do die();
 			}
 			ask SoilButtonMenu {
 				ask button_box {
@@ -423,16 +435,16 @@ species RunButton parent: Button {
 				}
 			}
 		} else {
-			do disable;
+			do disable();
 		}
 	}
 	
-	agent click {
+	action click() {
 		icon_size <- button_size;
-		do launch_simulation;
+		do launch_simulation();
 		return nil;
 	}
-	action post_click {
+	action post_click() {
 		
 	}
 	
@@ -446,9 +458,10 @@ species RunButton parent: Button {
 }
 
 
+// ==========================================================================
 /**
  * ButtonMenu interface.
- * 
+ 
  * The ButtonMenu is a special button that can create and display other buttons
  * when clicked.
  */
@@ -468,19 +481,19 @@ species ButtonMenu parent: Button {
 
 	ButtonBox button_box;
 	
-	action activate {
+	action activate() {
 		active <- true;
 		ask button_box {
 			visible <- true;
 		}
 	}
-	action deactivate {
+	action deactivate() {
 		active <- false;
 		ask button_box {
 			visible <- false;
 		}
 	}
-	list<point> build_button_coordinates {
+	list<point> build_button_coordinates() {
 		int i_button <- 0;
 		
 		point init_coordinates <- {(num_cell_width-2.5)*cell_size, 1*cell_size};
@@ -510,34 +523,36 @@ species ButtonMenu parent: Button {
 	/**
 	 * Creates and shows buttons associated to this menu.
 	 */
-	action show_buttons virtual: true;
+	action show_buttons() virtual: true;
 	/**
 	 * Hides and kill displayed buttons.
 	 */
-	action hide_buttons virtual: true;
+	action hide_buttons() virtual: true;
 	
-	action mouse_enter {
+	action mouse_enter() {
 		if(!active) {
 			icon_size <- 0.9*cell_size;
 		}
 	}
-	action mouse_leave {
+	action mouse_leave() {
 		icon_size <- 0.8*cell_size;
 	}
-	agent click {
+	action click() {
 		if active {
-			do hide_buttons;
+			do hide_buttons();
 		} else {
-			do show_buttons;
+			do show_buttons();
 		}
 		// Nothing to return as no selection is performed
 		return nil;
 	}
-	action post_click {
+	action post_click() {
 		// Nothing to do
 	}
 }
 
+
+// ==========================================================================
 /**
  * A button menu used to display available Seed types, initialized in the seed model.
  */
@@ -568,13 +583,13 @@ species SeedButtonMenu parent: ButtonMenu {
 		}
 	}
 	
-	action show_buttons {
+	action show_buttons() {
 		// Activates the current menu
-		do activate;
+		do activate();
 		// Hide the fertilizer menu
 		ask FertilizerButtonMenu {
 			if active {
-				do hide_buttons;
+				do hide_buttons();
 			}
 		}
 		// Builds the seed menu
@@ -598,16 +613,16 @@ species SeedButtonMenu parent: ButtonMenu {
 		}
 	}
 	
-	action hide_buttons {
+	action hide_buttons() {
 		// Deactivates the seed menu
-		do deactivate;
+		do deactivate();
 		// Deletes the button and views of the menu.
 		// Notice that the available Seed are NOT deleted.
 		ask SeedButton {
 			ask seed_view {
-				do die;
+				do die();
 			}
-			do die;
+			do die();
 		}
 	}
 	
@@ -618,6 +633,9 @@ species SeedButtonMenu parent: ButtonMenu {
 		draw circle(0.5*icon_size) color:#red;
 	}
 }
+
+
+// ==========================================================================
 
 /**
  * A button menu used to display available Fertilizer types, initialized in the fertilizer model.
@@ -638,13 +656,13 @@ species FertilizerButtonMenu parent: ButtonMenu {
 		}
 	}
 	
-	action show_buttons {
+	action show_buttons() {
 		// Activates the fertilizer menu
-		do activate;
+		do activate();
 		// Hides the seed menu
 		ask SeedButtonMenu {
 			if active {
-				do hide_buttons;	
+				do hide_buttons();	
 			}
 		}
 		int i <- 1;
@@ -683,16 +701,16 @@ species FertilizerButtonMenu parent: ButtonMenu {
 		}
 	}
 	
-	action hide_buttons {
+	action hide_buttons() {
 		// Deactivates the seed menu
-		do deactivate;
+		do deactivate();
 		// Deletes the button and views of the menu.
 		// Notice that the available Fertilizers are NOT deleted.
 		ask FertilizerButton {
 			ask fertilizer_view {
-				do die;
+				do die();
 			}
-			do die;
+			do die();
 		}
 	}
 	
@@ -703,6 +721,8 @@ species FertilizerButtonMenu parent: ButtonMenu {
 		draw circle(0.5*icon_size) color:#blue;
 	}
 }
+
+// ==========================================================================
 
 species SoilButtonMenu {
 	ButtonBox button_box;
@@ -729,6 +749,8 @@ species SoilButtonMenu {
 		}
 	}
 }
+
+// ==========================================================================
 
 species EpochsMenu {
 	init {
@@ -757,12 +779,17 @@ species EpochsMenu {
 	}
 }
 
+
+// ==========================================================================
+// ==========================================================================
+// ==========================================================================
+
 experiment debug_controller type:gui {	
 	output {
 		display camisol type:opengl axes: false background: #black {
-			event #mouse_move {ask simulation {do mouse_move_buttons;}}
-			event #mouse_down {ask simulation {do mouse_down_buttons;}}
-			event #mouse_up {ask simulation {do mouse_up_buttons;}}
+			event #mouse_move {ask simulation {do mouse_move_buttons();}}
+			event #mouse_down {ask simulation {do mouse_down_buttons();}}
+			event #mouse_up {ask simulation {do mouse_up_buttons();}}
 			
 			species ButtonBox aspect: default;
 			species SoilView aspect:default;

@@ -1,0 +1,22 @@
+{
+  "size": 3,
+  "canvases": {
+    "C0": [
+      [
+        ["organic", "pore", "mineral"],
+        ["pore", "organic", "pore"],
+        ["mineral", "pore", "organic"]
+      ],
+      [
+        ["organic", "organic", "pore"],
+        ["mineral", "pore", "mineral"],
+        ["pore", "organic", "pore"]
+      ],
+      [
+        ["mineral", "pore", "organic"],
+        ["organic", "mineral", "pore"],
+        ["pore", "pore", "mineral"]
+      ]
+    ]
+  }
+}

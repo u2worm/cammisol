@@ -37,13 +37,20 @@ global {
 species PoreParticle schedules:[] {
 	int grid_x;
 	int grid_y;
+	int grid_z;
+	float size;
 	float carrying_capacity;
+
+	float part_volume; // la part du volume total des pores portée par ce pore, caclulé dans init_grid.
+	
+	
 	
 	/**
 	 * OrganicParticle embedded within the PoreParticle. This is where nematodes spit out some C/N/P.
-	 */
-	OrganicParticle organic_particle;
 	
+	OrganicParticle organic_particle;
+	 */
+	 
 	Dam dam;
 	
 	list<MicrobePopulation> populations;
@@ -52,7 +59,7 @@ species PoreParticle schedules:[] {
 	list<OrganicParticle> accessible_organics;
 
 
-	action decompose {
+	action decompose() {
 		float total_C_labile <- sum(accessible_organics collect each.C_labile);
 		float total_C_recal <- sum(accessible_organics collect each.C_recalcitrant);
 		
@@ -107,15 +114,16 @@ species PoreParticle schedules:[] {
 		}
 	}
 	
-	action microbe_life {
+	action microbe_life() {
 		ask populations {
-			do update;
+			do update();
 		}
 		
 		float total_microbes_C <- sum(populations collect each.C);
 		
 		ask shuffle(populations) {
-			float perceived_rate <- C / total_microbes_C;
+			// Sécurité division par 0 : pore sans biomasse structurale -> aucune perception
+			float perceived_rate <- total_microbes_C > 0.0 ? C / total_microbes_C : 0.0;
 			do life(
 				myself.dam, perceived_rate, sum(myself.populations collect each.C), myself.carrying_capacity
 			);

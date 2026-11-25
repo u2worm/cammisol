@@ -74,7 +74,7 @@ global {
 	 */
 	EpochView selected_epoch <- nil;
 	
-	action init_calendar {
+	action init_calendar() {
 		loop i from: 0 to: 5 {
 			create Epoch number: 1 with: (time: i);
 		}
@@ -239,7 +239,7 @@ species HarvestView {
 
 experiment debug_harvest type: gui {
 
-	action _init_ {
+	action _init_() {
 		create simulation;
 		ask simulation {
 			do init_seeds();

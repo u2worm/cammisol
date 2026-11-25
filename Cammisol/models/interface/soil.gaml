@@ -33,7 +33,7 @@ global {
 	// Note: the regular init function is not used, since the controller model
 	// needs the soils but "import soil.gaml" in controller.gaml causes the
 	// soil init to be called AFTER the controller init.
-	action init_soils {
+	action init_soils() {
 		// Loads all plot images
 		loop soil_color over: soil_colors {
 			soil_icons[soil_color] <- image_file(image_path + definition + "/plots/plot_" + soil_color + ".png");
@@ -75,7 +75,7 @@ species Soil {
 	 */
 	string color <- "brown" among: soil_colors;
 	
-	string to_string {
+	string to_string() {
 		return "Soil(" + color + ")";
 	}
 }

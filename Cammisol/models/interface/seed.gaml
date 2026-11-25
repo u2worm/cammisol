@@ -27,7 +27,7 @@ global {
 	// Note: the regular init function is not used, since the controller model
 	// needs the seeds but "import seed.gaml" in controller.gaml causes the
 	// seed init to be called AFTER the controller init.
-	action init_seeds {
+	action init_seeds() {
 		write "Building available seeds...";
 		// Initializes all the available seeds
 		loop i from:0 to:length(crops)-1 {
@@ -80,7 +80,7 @@ species Seed {
 		}
 	}
 	
-	string to_string {
+	string to_string() {
 		return "Seed(" + name + ")";
 	}
 }

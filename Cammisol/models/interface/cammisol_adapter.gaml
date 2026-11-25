@@ -13,8 +13,12 @@ import "../cammisol/cammisol.gaml"
 global {
 	float N_P_dim_available_to_plant <- 0.08;
 	
+	//temporaire demander ce qu'est ce model_area
+	float model_area <- 10.0;
+	
 	float production(float N_seed, float P_seed, float N_plant, float P_plant, float harvest_index, float N_from_soil, float plot_surface) {
 		// N_from_soil = 0 => an infinite quantity of N can be retrieved from air
+		
 		write "N_seed: " + N_seed;
 		write "P_seed: " + P_seed;
 		write "N_plant: " + N_plant;
@@ -46,6 +50,10 @@ global {
 		write "Total biomass production: " + total_biomass_production;
 		// Returns the total mass of seed production
 		return harvest_index * total_biomass_production * plot_surface / model_area;
+	}
+
+	// test
+	action init_soil(float N, float P, float C) {
 	}
 
 	action fertilize(
@@ -86,7 +94,7 @@ global {
 		
 		// write("Fertilizer quantity for model: "+ qty_for_model);
 		
-		if(C_N > 0 and C_P > 0) {
+		if(C_N > 0 and C_P > 0) { //je pense qu'il faut changer cette partie avec la nouvelle version de Oragnic_particle
 			float soluble_Cl <- ((quantity_for_model * solubles / 100)) * soluble_labile_rate;
 			float N_pore <- soluble_Cl / C_N;
 			float P_pore <- soluble_Cl / C_P;
@@ -102,9 +110,10 @@ global {
 			
 			ask PoreParticle {
 				ask organic_particle {
+					// i'm adding the N/P from the soluble_Cl to labile N/P 
 					self.C_labile <- self.C_labile + soluble_Cl/length(PoreParticle);
-					self.N <- self.N + N_pore/length(PoreParticle);
-					self.P <- self.P + P_pore/length(PoreParticle);
+					self.N_labile <- self.N_labile + N_pore/length(PoreParticle);
+					self.P_labile <- self.P_labile + P_pore/length(PoreParticle);
 				}
 				
 				self.dam.dom <- [
@@ -116,10 +125,11 @@ global {
 			int num_organics <- length(OrganicParticle)-length(PoreParticle);
 			ask OrganicParticle{
 				if(!in_pore) {
+					// still adding in labile (fertilizer is labile ?)
 					self.C_labile <- self.C_labile + labile_organic/num_organics;
 					self.C_recalcitrant <- self.C_recalcitrant + recalcitrant_organic/num_organics;
-					self.N <- self.N + N_organic/num_organics;
-					self.P <- self.P + P_organic/num_organics;
+					self.N_labile <- self.N_labile + N_organic/num_organics;
+					self.P_labile <- self.P_labile + P_organic/num_organics;
 				}
 			}
 		}
@@ -137,7 +147,7 @@ global {
 }
 
 experiment TestCamisolWithFertilizer {
-	action _init_ {
+	action _init_() {
 		create simulation;
 		ask simulation {
 			// Mada Compost
@@ -244,12 +254,16 @@ experiment TestCamisolWithFertilizer {
 			species Nematode aspect: red_dot;
 		}
 		
-		display "awake population" type: java2D {
-			chart "awake population" type: series {
-				data "CopioR awake %" value: (sum(Copiotrophe_R collect (each.active_rate)) / length(Copiotrophe_R)) * 100 style:spline color: #red marker:false thickness: 3.0;
-				data "CopioK awake %" value: (sum(Copiotrophe_K collect (each.active_rate)) / length(Copiotrophe_K)) * 100 style:spline color: #green marker:false thickness: 3.0;
-				data "Oligo awake %" value: (sum(Oligotrophe_K collect (each.active_rate)) / length(Oligotrophe_K)) * 100 style:spline color: #blue marker:false thickness: 3.0;
-				data "Nematode awake %" value: (sum(Nematode collect (each.awake as int)) / length(Nematode)) * 100 style:line color: #yellow marker:false thickness: 3.0;
+		display "Awoken population" type: java2D {
+			chart "Awoken population" type: series {
+				if (length(PoreParticle) > 0) {
+					data "O awake (%)" value: sum(O_Strategist collect (each.active_rate))/length(O_Strategist) * 100 style:spline color: #red marker:false thickness:3;
+					data "A awake (%)" value: sum(F_Strategist collect (each.active_rate))/length(F_Strategist) * 100 style:spline color: #green marker:false thickness:3;
+					data "M awake (%)" value: sum(M_Strategist collect (each.active_rate))/length(M_Strategist) * 100 style:spline color: #blue marker:false thickness:3;
+				}
+				if(nematodes_count > 0) {
+					data "Nematode awake (%)" value: (sum(Nematode collect (each.awake as int)) / length(Nematode)) * 100 style:spline color: #yellow marker:false thickness:3;				
+				}
 			}
 		}
 		
@@ -279,23 +293,30 @@ experiment TestCamisolWithFertilizer {
 			chart "Organics composition" type:series {
 				data "C_labile" value: (sum(OrganicParticle collect each.C_labile)) style:spline marker:false thickness: 3.0;
 				data "C_recalcitrant" value: (sum(OrganicParticle collect each.C_recalcitrant)) style:spline marker:false thickness: 3.0;
-				data "N" value: (sum(OrganicParticle collect each.N)) style:spline marker:false thickness: 3.0;
-				data "P" value: (sum(OrganicParticle collect each.P)) style:spline marker:false thickness: 3.0;
+				data "N_labile" value: (sum(OrganicParticle collect each.N_labile)) style:spline marker:false thickness: 3.0;
+				data "N_recalcitrant" value: (sum(OrganicParticle collect each.N_recalcitrant)) style:spline marker:false thickness: 3.0;
+				data "P_labile" value: (sum(OrganicParticle collect each.P_labile)) style:spline marker:false thickness: 3.0;
+				data "P_recalcitrant" value: (sum(OrganicParticle collect each.P_recalcitrant)) style:spline marker:false thickness: 3.0;
 			}
 		}
 		
-		display "populations" type:java2D {
-			chart "Bacteria populations" type:series {
-				data "Copiotrophe R (C)" value: (sum(Copiotrophe_R collect each.C)) style:spline color: #red marker:false thickness: 3.0;
-				data "Copiotrophe K (C)" value: (sum(Copiotrophe_K collect each.C)) style:spline color: #green marker:false thickness: 3.0;
-				data "Oligotrophe K (C)" value: (sum(Oligotrophe_K collect each.C)) style:spline color: #blue marker:false thickness: 3.0;
+		display "Awoken population" type: java2D {
+			chart "Awoken population" type: series {
+				if (length(PoreParticle) > 0) {
+					data "O awake (%)" value: sum(O_Strategist collect (each.active_rate))/length(O_Strategist) * 100 style:spline color: #red marker:false thickness:3;
+					data "A awake (%)" value: sum(F_Strategist collect (each.active_rate))/length(F_Strategist) * 100 style:spline color: #green marker:false thickness:3;
+					data "M awake (%)" value: sum(M_Strategist collect (each.active_rate))/length(M_Strategist) * 100 style:spline color: #blue marker:false thickness:3;
+				}
+				if(nematodes_count > 0) {
+					data "Nematode awake (%)" value: (sum(Nematode collect (each.awake as int)) / length(Nematode)) * 100 style:spline color: #yellow marker:false thickness:3;				
+				}
 			}
 		}
 	}
 }
 
 experiment TestProduction type:gui {
-	action _init_ {
+	action _init_() {
 		create simulation;
 		ask simulation {
 			loop i from: 0 to: 3 {

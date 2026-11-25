@@ -19,6 +19,7 @@ global {
 species OrganicParticle schedules:[] {
 	int grid_x;
 	int grid_y;
+	int grid_z;
 	float C_labile;
 	float N_labile;
 	float P_labile;
@@ -26,11 +27,13 @@ species OrganicParticle schedules:[] {
 	float N_recalcitrant;
 	float P_recalcitrant;
 	
+	float size;
+	
 	bool in_pore <- false;
 	
 	list<OrganicParticle> organic_neighbors;
 	
-	string state {
+	string state() {
 		return name + " [recal:("
 			+ C_recalcitrant + ", "
 			+ N_recalcitrant + ", "

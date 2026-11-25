@@ -17,7 +17,7 @@ global {
 }
 
 experiment application type:gui {
-	action _init_ {
+	action _init_() {
 		gama.pref_display_slice_number <- 12; /* 128 too slow ! */
 		gama.pref_display_show_rotation <- false;
 		gama.pref_display_show_errors <- false;
@@ -28,30 +28,30 @@ experiment application type:gui {
 		minimum_cycle_duration <- interface_minimum_cycle_duration;
 		create simulation {
 			// Autorun to ensure display update
-			do resume;
+			do resume();
 		}
 	}
 	
 	output {
 		// layout #none consoles: false tabs:false toolbars:false controls:false editors: false navigator: false tray: false background: #black;
 		
-		display camisol type:opengl axes: false fullscreen: true show_fps:true background: #black antialias: true {
+		display camisol type:opengl axes: false fullscreen: false show_fps:true background: #black antialias: true {
 			camera #from_above dynamic:false locked:true distance:min([env_width/2/tan(45/2), env_height/2/tan(45/2)]);
 //			graphics "World "{
 //				ask world {draw shape color:rgb(10, 0, 0, 0.5) border: #black;}
 //			}
 			// Button actions
-			event #mouse_move {ask simulation {do mouse_move_buttons;}}
-			event #mouse_down {ask simulation {do mouse_down_buttons;}}
-			event #mouse_drag {ask simulation {do mouse_drag_buttons;}}
-			event #mouse_up {ask simulation {do mouse_up_buttons;}}
+			event #mouse_move {ask simulation {do mouse_move_buttons();}}
+			event #mouse_down {ask simulation {do mouse_down_buttons();}}
+			event #mouse_drag {ask simulation {do mouse_drag_buttons();}}
+			event #mouse_up {ask simulation {do mouse_up_buttons();}}
 			// Plot actions
-			event #mouse_move {ask simulation {do mouse_move_plots;}}
-			event #mouse_drag {ask simulation {do mouse_drag_plots;}}
-			event #mouse_down {ask simulation {do mouse_down_plots;}}
-			event #mouse_up {ask simulation {do mouse_up_plots;}}
+			event #mouse_move {ask simulation {do mouse_move_plots();}}
+			event #mouse_drag {ask simulation {do mouse_drag_plots();}}
+			event #mouse_down {ask simulation {do mouse_down_plots();}}
+			event #mouse_up {ask simulation {do mouse_up_plots();}}
 			// Harvest actions
-			event #mouse_down {ask simulation {do mouse_down_harvest;}}
+			event #mouse_down {ask simulation {do mouse_down_harvest();}}
 			
 			image sun position: {0, 0, -0.001} size: {1, 0.33} refresh: false;
 			image landscape position: {0, 0, -0.001} size: {1, 1} refresh: false;

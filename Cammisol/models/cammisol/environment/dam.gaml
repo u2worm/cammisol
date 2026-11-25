@@ -52,19 +52,19 @@ species Dam schedules: []
 	// float ph_h;
 
 	
-	float available_N {
+	float available_N() {
 		return dom[0] + dim[0];
 	}
 	
-	float available_P {
+	float available_P() {
 		return dom[1] + dim[1];
 	}
 		
-	float available_C {
+	float available_C() {
 		return dom[2];
 	}
 	
-	string state {
+	string state() {
 		return name + " [dom:("
 			+ dom[2] + ", " + dom[0] + ", " + dom[1]
 			+ "), dim:(" + dim[0] + ", " + dim[1] + ")]";

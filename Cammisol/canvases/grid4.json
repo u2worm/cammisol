@@ -1,0 +1,42 @@
+{
+  "size": 5,
+  "canvases": {
+    "C0": [
+      [
+        ["organic", "pore", "mineral", "pore", "organic"],
+        ["pore", "organic", "pore", "mineral", "pore"],
+        ["mineral", "pore", "organic", "pore", "mineral"],
+        ["organic", "mineral", "pore", "organic", "pore"],
+        ["pore", "organic", "mineral", "pore", "organic"]
+      ],
+      [
+        ["pore", "organic", "pore", "mineral", "organic"],
+        ["mineral", "pore", "organic", "pore", "mineral"],
+        ["organic", "mineral", "pore", "organic", "pore"],
+        ["pore", "organic", "mineral", "pore", "organic"],
+        ["mineral", "pore", "organic", "mineral", "pore"]
+      ],
+      [
+        ["mineral", "pore", "organic", "pore", "mineral"],
+        ["organic", "pore", "mineral", "organic", "pore"],
+        ["pore", "organic", "pore", "mineral", "organic"],
+        ["mineral", "organic", "pore", "pore", "mineral"],
+        ["pore", "mineral", "organic", "pore", "organic"]
+      ],
+      [
+        ["organic", "mineral", "pore", "organic", "pore"],
+        ["pore", "organic", "mineral", "pore", "organic"],
+        ["mineral", "pore", "organic", "mineral", "pore"],
+        ["organic", "pore", "mineral", "organic", "mineral"],
+        ["pore", "mineral", "pore", "organic", "pore"]
+      ],
+      [
+        ["pore", "organic", "mineral", "pore", "organic"],
+        ["mineral", "pore", "organic", "pore", "mineral"],
+        ["organic", "mineral", "pore", "organic", "pore"],
+        ["pore", "organic", "pore", "mineral", "organic"],
+        ["mineral", "pore", "organic", "mineral", "pore"]
+      ]
+    ]
+  }
+}
